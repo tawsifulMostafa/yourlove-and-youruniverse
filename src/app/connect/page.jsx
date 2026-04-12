@@ -67,8 +67,9 @@ export default function ConnectPage() {
 
     setLoading(false);
     alert(`Couple created! Invite code: ${newCode}`);
-    router.push("/home");
+    router.push("/");
   };
+
   const handleJoinCouple = async () => {
     if (!user || !inviteCode) return;
 
@@ -99,15 +100,15 @@ export default function ConnectPage() {
     }
 
     setLoading(false);
-    alert("Joined successfully 💞");
-    router.push("/home");
+    alert("Joined successfully");
+    router.push("/");
   };
 
   return (
     <div className="min-h-screen bg-pink-50 px-4 py-10">
       <div className="mx-auto max-w-xl rounded-3xl bg-white p-6 shadow-lg">
         <h1 className="text-center text-3xl font-bold text-pink-600">
-          Connect with Your Partner 💕
+          Connect with Your Partner
         </h1>
         <p className="mt-2 text-center text-sm text-gray-500">
           Create a private couple space or join with an invite code

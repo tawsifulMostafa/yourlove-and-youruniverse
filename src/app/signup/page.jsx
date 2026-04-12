@@ -61,7 +61,7 @@ export default function SignupPage() {
         }
 
         setLoading(false);
-        alert("Account created successfully 💖");
+        alert("Account created successfully");
         router.push("/login");
     };
 
@@ -72,7 +72,7 @@ export default function SignupPage() {
                     Create Account
                 </h1>
                 <p className="mb-4 text-center text-sm text-gray-500">
-                    Start your private love world ✨
+                    Start your private love world
                 </p>
 
                 <form onSubmit={handleSignup} className="space-y-3">

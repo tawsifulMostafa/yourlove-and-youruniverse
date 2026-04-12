@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Navbar from "@/components/shared/Navbar";
 import toast from "react-hot-toast";
@@ -16,11 +16,7 @@ export default function LettersPage() {
         message: "",
     });
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         const {
             data: { user },
         } = await supabase.auth.getUser();
@@ -45,7 +41,12 @@ export default function LettersPage() {
             .order("created_at", { ascending: false });
 
         setLetters(lettersData || []);
-    };
+    }, []);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadData();
+    }, [loadData]);
 
     const handleCreate = async () => {
         if (!form.title || !form.message) {
@@ -66,10 +67,10 @@ export default function LettersPage() {
             return;
         }
 
-        toast.success("Letter saved 💌");
+        toast.success("Letter saved");
 
         setForm({ title: "", condition: "", message: "" });
-        loadData(); // no reload
+        loadData();
     };
 
     const handleOpen = async (letter) => {
@@ -89,7 +90,7 @@ export default function LettersPage() {
 
             <div className="mx-auto max-w-3xl px-6 py-10">
                 <h1 className="text-center text-3xl font-semibold text-[#9d5c63]">
-                    Open When Letters 💌
+                    Open When Letters
                 </h1>
 
                 {/* Create Card */}
@@ -140,14 +141,14 @@ export default function LettersPage() {
                             </h3>
 
                             <p className="mt-1 text-sm text-gray-500">
-                                Open when: {letter.open_condition || "Anytime 💌"}
+                                Open when: {letter.open_condition || "Anytime"}
                             </p>
 
                             <button
                                 onClick={() => handleOpen(letter)}
                                 className="mt-3 rounded-lg bg-[#9d5c63] px-4 py-2 text-white"
                             >
-                                {letter.is_opened ? "Read Again 💖" : "Open 💌"}
+                                {letter.is_opened ? "Read Again" : "Open"}
                             </button>
                         </div>
                     ))}

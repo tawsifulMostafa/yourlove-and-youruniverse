@@ -27,14 +27,14 @@ export default function AddMemoryModal({
                     onClick={handleClose}
                     className="text-2xl text-gray-500 transition hover:text-black"
                 >
-                    ×
+                    x
                 </button>
             </div>
 
             <input
                 type="text"
                 placeholder="Memory title"
-               className="mt-3 w-full rounded-xl border border-black/10 p-3 outline-none transition focus:border-[#9d5c63]"
+                className="mt-3 w-full rounded-xl border border-black/10 p-3 outline-none transition focus:border-[#9d5c63]"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
             />

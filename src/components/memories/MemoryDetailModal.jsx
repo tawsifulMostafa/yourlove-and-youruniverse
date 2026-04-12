@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Modal from "@/components/shared/Modal";
 
 export default function MemoryDetailModal({
@@ -14,15 +15,19 @@ export default function MemoryDetailModal({
                     onClick={onClose}
                     className="absolute right-0 top-0 text-2xl text-gray-500 transition hover:text-black"
                 >
-                    ×
+                    x
                 </button>
 
                 {memory?.signedUrl ? (
-                    <img
-                        src={memory.signedUrl}
-                        alt={memory.title}
-                        className="h-[420px] w-full rounded-2xl object-cover"
-                    />
+                    <div className="relative h-[420px] w-full overflow-hidden rounded-2xl">
+                        <Image
+                            src={memory.signedUrl}
+                            alt={memory.title}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                        />
+                    </div>
                 ) : (
                     <div className="flex h-[420px] items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
                         No image

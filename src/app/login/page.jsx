@@ -39,7 +39,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/")
+    router.push("/");
   };
 
   return (
@@ -49,7 +49,7 @@ export default function LoginPage() {
           Welcome Back
         </h1>
         <p className="mb-4 text-center text-sm text-gray-500">
-          Login to your private world 💌
+          Login to your private world
         </p>
 
         <form onSubmit={handleLogin} className="space-y-3">

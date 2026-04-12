@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 import { supabase } from "@/lib/supabase";
@@ -27,11 +27,7 @@ export default function MemoriesPage() {
 
     const [file, setFile] = useState(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         const {
             data: { user },
             error: userError,
@@ -98,7 +94,12 @@ export default function MemoriesPage() {
         );
 
         setMemories(memoriesWithSignedUrls);
-    };
+    }, [router]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadData();
+    }, [loadData]);
 
     const resetForm = () => {
         setForm({
@@ -156,7 +157,7 @@ export default function MemoriesPage() {
                 return;
             }
 
-            toast.success("Memory added 📸");
+            toast.success("Memory added");
             resetForm();
             setShowAddModal(false);
             await loadData();
@@ -176,7 +177,7 @@ export default function MemoriesPage() {
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-semibold text-[#9d5c63]">
-                            Shared Memories 📸
+                            Shared Memories
                         </h1>
                         <p className="mt-2 text-gray-600">
                             A quiet collection of your most meaningful moments.

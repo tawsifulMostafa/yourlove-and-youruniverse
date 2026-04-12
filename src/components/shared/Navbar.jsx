@@ -4,7 +4,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function Navbar({ showLogout = false }) {
+export default function Navbar({ showLogout = true }) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -28,7 +28,7 @@ export default function Navbar({ showLogout = false }) {
     <header className="sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-xl font-semibold tracking-tight text-[#9d5c63]">
-          YourLove ❤️
+          YourLove
         </Link>
 
         <nav className="flex items-center gap-2">

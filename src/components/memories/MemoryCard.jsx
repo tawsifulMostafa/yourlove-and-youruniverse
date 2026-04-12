@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function MemoryCard({ memory, onClick, formatTime }) {
     return (
         <div
@@ -5,11 +7,15 @@ export default function MemoryCard({ memory, onClick, formatTime }) {
             className="cursor-pointer overflow-hidden rounded-3xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition duration-200 ease-out hover:-translate-y-1"
         >
             {memory.signedUrl ? (
-                <img
-                    src={memory.signedUrl}
-                    alt={memory.title}
-                    className="h-56 w-full object-cover"
-                />
+                <div className="relative h-56 w-full">
+                    <Image
+                        src={memory.signedUrl}
+                        alt={memory.title}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                    />
+                </div>
             ) : (
                 <div className="flex h-56 items-center justify-center bg-gray-100 text-gray-400">
                     No image

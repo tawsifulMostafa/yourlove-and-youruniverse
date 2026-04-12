@@ -5,14 +5,14 @@ export default function HeroSection() {
 
                 {/* Avatar */}
                 <div className="mb-10 flex items-center justify-center gap-6">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm text-xl">
-                        🧑
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm text-sm font-medium text-[#9d5c63]">
+                        You
                     </div>
 
-                    <div className="text-xl text-[#9d5c63]">♡</div>
+                    <div className="text-xl text-[#9d5c63]">+</div>
 
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm text-xl">
-                        🧑
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm text-sm font-medium text-[#9d5c63]">
+                        Love
                     </div>
                 </div>
 
@@ -23,7 +23,7 @@ export default function HeroSection() {
 
                 {/* Subtitle */}
                 <p className="mt-5 text-lg text-gray-600">
-                    A calm space to share memories, write letters, and stay close — no matter the distance.
+                    A calm space to share memories, write letters, and stay close, no matter the distance.
                 </p>
 
             </div>

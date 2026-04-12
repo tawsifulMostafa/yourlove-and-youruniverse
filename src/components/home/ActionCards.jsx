@@ -2,19 +2,19 @@ import Link from "next/link";
 
 const actions = [
   {
-    title: "Open When Letters 💌",
+    title: "Open When Letters",
     desc: "Write, save, and revisit your most heartfelt messages.",
     btn: "Write a Letter",
     href: "/letters",
   },
   {
-    title: "Shared Memories 📸",
+    title: "Shared Memories",
     desc: "Keep your favorite moments safe in one private space.",
     btn: "Add Memory",
     href: "/memories",
   },
   {
-    title: "Thoughtful Surprises 🎁",
+    title: "Thoughtful Surprises",
     desc: "Plan little surprises and meaningful gestures.",
     btn: "Coming Soon",
     href: "#",
@@ -36,7 +36,7 @@ export default function ActionCards() {
 
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {actions.map((item, i) => (
-            <div  
+            <div
               key={i}
               className="rounded-3xl bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.06)] border border-black/5 transition duration-200 ease-out hover:-translate-y-1"
             >
