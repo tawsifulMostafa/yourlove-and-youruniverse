@@ -105,37 +105,37 @@ export default function ConnectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-pink-50 px-4 py-10">
-      <div className="mx-auto max-w-xl rounded-3xl bg-white p-6 shadow-lg">
-        <h1 className="text-center text-3xl font-bold text-pink-600">
+    <div className="min-h-screen bg-[var(--app-bg)] px-4 py-10">
+      <div className="mx-auto max-w-xl rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+        <h1 className="text-center text-3xl font-bold text-[var(--accent)]">
           Connect with Your Partner
         </h1>
-        <p className="mt-2 text-center text-sm text-gray-500">
+        <p className="mt-2 text-center text-sm text-[var(--muted)]">
           Create a private couple space or join with an invite code
         </p>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-pink-200 p-5">
-            <h2 className="text-xl font-semibold text-pink-600">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5">
+            <h2 className="text-xl font-semibold text-[var(--accent)]">
               Create Couple
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-[var(--muted)]">
               Start a new private world and share your invite code.
             </p>
             <button
               onClick={handleCreateCouple}
               disabled={loading}
-              className="mt-4 w-full rounded-lg bg-pink-500 py-3 text-white hover:bg-pink-600 disabled:opacity-60"
+              className="mt-4 w-full rounded-lg bg-[var(--accent)] py-3 text-white hover:opacity-90 disabled:opacity-60"
             >
               {loading ? "Creating..." : "Create Couple"}
             </button>
           </div>
 
-          <div className="rounded-2xl border border-pink-200 p-5">
-            <h2 className="text-xl font-semibold text-pink-600">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5">
+            <h2 className="text-xl font-semibold text-[var(--accent)]">
               Join Couple
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-[var(--muted)]">
               Enter your partner&apos;s invite code to join.
             </p>
 
@@ -144,13 +144,13 @@ export default function ConnectPage() {
               placeholder="Enter invite code"
               value={inviteCode}
               onChange={(e) => setInviteCode(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-pink-400"
+              className="mt-4 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
             />
 
             <button
               onClick={handleJoinCouple}
               disabled={loading}
-              className="mt-4 w-full rounded-lg bg-gray-900 py-3 text-white disabled:opacity-60"
+              className="mt-4 w-full rounded-lg bg-[var(--text)] py-3 text-[var(--surface)] disabled:opacity-60"
             >
               {loading ? "Joining..." : "Join with Code"}
             </button>

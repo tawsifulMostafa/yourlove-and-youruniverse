@@ -5,11 +5,11 @@ export default function Modal({ isOpen, onClose, children, maxWidth = "max-w-2xl
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
             onClick={onClose}
         >
             <div
-                className={`w-full ${maxWidth} rounded-3xl bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.12)]`}
+                className={`w-full ${maxWidth} rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {children}

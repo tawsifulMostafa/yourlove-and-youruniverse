@@ -1,8 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --app-bg: #f8f6f2;
+  --app-bg-soft: #f6f1eb;
+  --app-bg-image: none;
+  --surface: #ffffff;
+  --surface-soft: #f8f4ef;
+  --surface-accent: #f3e7e9;
+  --text: #171717;
+  --muted: #5f5f66;
+  --border: rgba(0, 0, 0, 0.08);
+  --accent: #9d5c63;
+  --accent-hover: #7f464f;
+  --accent-contrast: #ffffff;
+  --glow: rgba(157, 92, 99, 0.18);
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.07);
+  --background: var(--app-bg);
+  --foreground: var(--text);
+}
+
+html[data-theme="eternal"] {
+  --app-bg: #211f1d;
+  --app-bg-soft: #2b2228;
+  --app-bg-image:
+    radial-gradient(circle at 78% 10%, rgba(225, 142, 231, 0.16), transparent 32rem),
+    radial-gradient(circle at 18% 88%, rgba(191, 160, 113, 0.12), transparent 26rem),
+    linear-gradient(145deg, #211f1d 0%, #261d24 44%, #1b1d1b 100%);
+  --surface: rgba(42, 39, 39, 0.82);
+  --surface-soft: rgba(59, 51, 55, 0.78);
+  --surface-accent: rgba(191, 160, 113, 0.14);
+  --text: #fff8e1;
+  --muted: #d8d0cd;
+  --border: rgba(255, 248, 225, 0.14);
+  --accent: #bfa071;
+  --accent-hover: #d8b889;
+  --accent-contrast: #211f1d;
+  --glow: rgba(225, 142, 231, 0.26);
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.4);
+  --background: var(--app-bg);
+  --foreground: var(--text);
 }
 
 @theme inline {
@@ -12,15 +48,62 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: var(--app-bg-image), var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+input,
+textarea,
+select {
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
+html[data-theme="eternal"] body {
+  color-scheme: dark;
+}
+
+html[data-theme="eternal"] header,
+html[data-theme="eternal"] .eternal-surface {
+  box-shadow: inset 0 1px 0 rgba(255, 248, 225, 0.06), var(--shadow);
+}
+
+html[data-theme="eternal"] .eternal-reward-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 70% 12%, rgba(225, 142, 231, 0.26), transparent 11rem),
+    linear-gradient(135deg, rgba(46, 42, 43, 0.96), rgba(49, 35, 45, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 225, 0.12),
+    0 0 36px rgba(225, 142, 231, 0.2),
+    0 22px 58px rgba(0, 0, 0, 0.36);
+}
+
+html[data-theme="eternal"] .eternal-reward-card::before {
+  content: "";
+  position: absolute;
+  inset: -40% 45% auto auto;
+  height: 11rem;
+  width: 11rem;
+  border-radius: 999px;
+  background: rgba(225, 142, 231, 0.22);
+  filter: blur(34px);
+  pointer-events: none;
+}
+
+html[data-theme="eternal"] .eternal-mode-button {
+  color: var(--accent-contrast);
+  background: linear-gradient(135deg, #bfa071, #e7b0a2);
+  box-shadow: 0 0 22px rgba(225, 142, 231, 0.22);
+}
+
+html[data-theme="eternal"] [class*="bg-[var(--accent)]"] {
+  color: var(--accent-contrast) !important;
 }

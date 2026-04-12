@@ -43,12 +43,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pink-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg">
-        <h1 className="mb-2 text-center text-2xl font-bold text-pink-600">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--app-bg)] px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+        <h1 className="mb-2 text-center text-2xl font-bold text-[var(--accent)]">
           Welcome Back
         </h1>
-        <p className="mb-4 text-center text-sm text-gray-500">
+        <p className="mb-4 text-center text-sm text-[var(--muted)]">
           Login to your private world
         </p>
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
             type="email"
             name="email"
             placeholder="Your email"
-            className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-pink-400"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
             value={formData.email}
             onChange={handleChange}
           />
@@ -66,7 +66,7 @@ export default function LoginPage() {
             type="password"
             name="password"
             placeholder="Your password"
-            className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-pink-400"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
             value={formData.password}
             onChange={handleChange}
           />
@@ -74,15 +74,15 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-pink-500 py-3 text-white transition hover:bg-pink-600 disabled:opacity-60"
+            className="w-full rounded-lg bg-[var(--accent)] py-3 text-white transition hover:opacity-90 disabled:opacity-60"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-500">
+        <p className="mt-4 text-center text-sm text-[var(--muted)]">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-pink-600">
+          <Link href="/signup" className="font-medium text-[var(--accent)]">
             Create one
           </Link>
         </p>

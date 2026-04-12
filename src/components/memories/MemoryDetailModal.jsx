@@ -13,7 +13,7 @@ export default function MemoryDetailModal({
             <div className="relative">
                 <button
                     onClick={onClose}
-                    className="absolute right-0 top-0 text-2xl text-gray-500 transition hover:text-black"
+                    className="absolute right-0 top-0 text-2xl text-[var(--muted)] transition hover:text-[var(--text)]"
                 >
                     x
                 </button>
@@ -29,22 +29,22 @@ export default function MemoryDetailModal({
                         />
                     </div>
                 ) : (
-                    <div className="flex h-[420px] items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                    <div className="flex h-[420px] items-center justify-center rounded-2xl bg-[var(--surface-soft)] text-[var(--muted)]">
                         No image
                     </div>
                 )}
 
                 <div className="pt-4">
-                    <h3 className="text-2xl font-semibold text-gray-900">
+                    <h3 className="text-2xl font-semibold text-[var(--text)]">
                         {memory?.title}
                     </h3>
 
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-[var(--muted)]">
                         {memory ? formatTime(memory.created_at) : ""}
                     </p>
 
                     {memory?.note && (
-                        <p className="mt-4 text-gray-700">{memory.note}</p>
+                        <p className="mt-4 text-[var(--muted)]">{memory.note}</p>
                     )}
                 </div>
             </div>

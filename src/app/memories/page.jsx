@@ -170,23 +170,23 @@ export default function MemoriesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f6f1eb]">
+        <div className="min-h-screen bg-[var(--app-bg-soft)]">
             <Navbar />
 
             <div className="mx-auto max-w-6xl px-6 py-10">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-semibold text-[#9d5c63]">
+                        <h1 className="text-3xl font-semibold text-[var(--accent)]">
                             Shared Memories
                         </h1>
-                        <p className="mt-2 text-gray-600">
+                        <p className="mt-2 text-[var(--muted)]">
                             A quiet collection of your most meaningful moments.
                         </p>
                     </div>
 
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#9d5c63] text-white shadow-[0_10px_20px_rgba(0,0,0,0.08)] transition hover:scale-105"
+                        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-white shadow-[var(--shadow)] transition hover:scale-105"
                         aria-label="Add memory"
                         title="Add memory"
                     >
@@ -196,17 +196,17 @@ export default function MemoriesPage() {
 
                 <div className="mt-10">
                     {memories.length === 0 ? (
-                        <div className="rounded-3xl bg-white p-12 text-center shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
-                            <p className="text-lg font-medium text-gray-800">
+                        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-12 text-center shadow-[var(--shadow)]">
+                            <p className="text-lg font-medium text-[var(--text)]">
                                 No memories yet
                             </p>
-                            <p className="mt-2 text-gray-500">
+                            <p className="mt-2 text-[var(--muted)]">
                                 Start saving your beautiful moments together.
                             </p>
 
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#9d5c63] px-5 py-3 text-white"
+                                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-white"
                             >
                                 <Plus size={18} />
                                 Add your first memory
