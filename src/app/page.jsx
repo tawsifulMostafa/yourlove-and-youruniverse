@@ -6,6 +6,7 @@ import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/home/HeroSection";
 import ConnectionCard from "@/components/home/ConnectionCard";
 import LoveLevelCard from "@/components/home/LoveLevelCard";
+import JourneyPreview from "@/components/home/JourneyPreview";
 import ActionCards from "@/components/home/ActionCards";
 import { supabase } from "@/lib/supabase";
 import { hasEmailLoginPassword } from "@/lib/auth";
@@ -37,6 +38,7 @@ export default function HomePage() {
     letterCount: 0,
     memoryCount: 0,
   });
+  const [recentItems, setRecentItems] = useState([]);
   const router = useRouter();
 
   const getData = useCallback(async () => {
@@ -72,6 +74,7 @@ export default function HomePage() {
       setCouple(null);
       setHasSharedSpace(false);
       setLoveStats({ letterCount: 0, memoryCount: 0 });
+      setRecentItems([]);
       return;
     }
 
@@ -85,6 +88,7 @@ export default function HomePage() {
       setCouple(null);
       setHasSharedSpace(false);
       setLoveStats({ letterCount: 0, memoryCount: 0 });
+      setRecentItems([]);
       return;
     }
 
@@ -101,7 +105,12 @@ export default function HomePage() {
       setCouple(coupleData);
     }
 
-    const [{ count: letterCount }, { count: memoryCount }] = await Promise.all([
+    const [
+      { count: letterCount },
+      { count: memoryCount },
+      { data: recentLetters },
+      { data: recentMemories },
+    ] = await Promise.all([
       supabase
         .from("letters")
         .select("id", { count: "exact", head: true })
@@ -110,12 +119,47 @@ export default function HomePage() {
         .from("memories")
         .select("id", { count: "exact", head: true })
         .eq("couple_id", profile.couple_id),
+      supabase
+        .from("letters")
+        .select("id, title, open_condition, created_at")
+        .eq("couple_id", profile.couple_id)
+        .order("created_at", { ascending: false })
+        .limit(3),
+      supabase
+        .from("memories")
+        .select("id, title, note, created_at, memory_date")
+        .eq("couple_id", profile.couple_id)
+        .order("created_at", { ascending: false })
+        .limit(3),
     ]);
 
     setLoveStats({
       letterCount: letterCount || 0,
       memoryCount: memoryCount || 0,
     });
+
+    const nextRecentItems = [
+      ...(recentLetters || []).map((letter) => ({
+        id: letter.id,
+        type: "letter",
+        title: letter.title || "Untitled letter",
+        description: letter.open_condition
+          ? `Open when ${letter.open_condition}`
+          : "A letter ready whenever you need it.",
+        created_at: letter.created_at,
+      })),
+      ...(recentMemories || []).map((memory) => ({
+        id: memory.id,
+        type: "memory",
+        title: memory.title || "Untitled memory",
+        description: memory.note || (memory.memory_date ? `Saved for ${memory.memory_date}` : "A memory saved together."),
+        created_at: memory.created_at,
+      })),
+    ]
+      .sort((first, second) => new Date(second.created_at) - new Date(first.created_at))
+      .slice(0, 3);
+
+    setRecentItems(nextRecentItems);
 
     const { data: partner, error: partnerError } = await supabase
       .from("profiles")
@@ -172,6 +216,13 @@ export default function HomePage() {
         isConnected={isConnected}
         letterCount={loveStats.letterCount}
         memoryCount={loveStats.memoryCount}
+      />
+      <JourneyPreview
+        isConnected={isConnected}
+        hasSharedSpace={hasSharedSpace}
+        partnerProfile={partnerProfile}
+        recentItems={recentItems}
+        inviteCode={couple?.invite_code}
       />
       <ActionCards />
     </main>
