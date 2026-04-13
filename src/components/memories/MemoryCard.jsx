@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function MemoryCard({ memory, onClick, formatTime }) {
+export default function MemoryCard({ memory, onClick, onEdit, onDelete, formatTime, disabledActions = false }) {
     return (
         <div
             onClick={() => onClick(memory)}
@@ -28,7 +28,7 @@ export default function MemoryCard({ memory, onClick, formatTime }) {
                 </h3>
 
                 <p className="mt-1 text-sm text-[var(--muted)]">
-                    {formatTime(memory.created_at)}
+                    {memory.memory_date || formatTime(memory.created_at)}
                 </p>
 
                 {memory.note && (
@@ -36,6 +36,31 @@ export default function MemoryCard({ memory, onClick, formatTime }) {
                         {memory.note}
                     </p>
                 )}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onEdit(memory);
+                        }}
+                        disabled={disabledActions}
+                        className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--accent)] transition hover:bg-[var(--surface-accent)] disabled:opacity-60"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onDelete(memory);
+                        }}
+                        disabled={disabledActions}
+                        className="rounded-lg border border-[var(--danger-border)] px-3 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-[var(--danger-soft)] disabled:opacity-60"
+                    >
+                        Delete
+                    </button>
+                </div>
             </div>
         </div>
     );

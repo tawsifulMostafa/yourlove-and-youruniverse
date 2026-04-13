@@ -132,7 +132,7 @@ export default function Navbar({ showLogout = true }) {
     >
       {theme === "eternal" && eternalModeUnlocked ? <Sun size={16} /> : <Moon size={16} />}
       <span className="hidden lg:inline">
-        {theme === "eternal" && eternalModeUnlocked ? "Light" : "Eternal"}
+        {theme === "eternal" && eternalModeUnlocked ? "Soft" : "Eternal"}
       </span>
     </button>
   );
@@ -211,7 +211,7 @@ export default function Navbar({ showLogout = true }) {
               <span>Eternal Mode</span>
               <span className="inline-flex items-center gap-2 text-[var(--accent)]">
                 {theme === "eternal" && eternalModeUnlocked ? <Sun size={16} /> : <Moon size={16} />}
-                {eternalModeUnlocked ? (theme === "eternal" ? "On" : "Off") : "Level 10"}
+                {eternalModeUnlocked ? (theme === "eternal" ? "Soft Mode" : "Eternal Mode") : "Level 10"}
               </span>
             </button>
 

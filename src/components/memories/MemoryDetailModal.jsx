@@ -40,7 +40,7 @@ export default function MemoryDetailModal({
                     </h3>
 
                     <p className="mt-2 text-sm text-[var(--muted)]">
-                        {memory ? formatTime(memory.created_at) : ""}
+                        {memory ? memory.memory_date || formatTime(memory.created_at) : ""}
                     </p>
 
                     {memory?.note && (

@@ -15,6 +15,8 @@ export default function AddMemoryModal({
     onSave,
     loading,
     onReset,
+    previewUrl,
+    mode = "add",
 }) {
     const handleClose = () => {
         onClose();
@@ -24,7 +26,9 @@ export default function AddMemoryModal({
     return (
         <Modal isOpen={isOpen} onClose={handleClose} maxWidth="max-w-2xl">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-[var(--accent)]">Add Memory</h2>
+                <h2 className="text-xl font-semibold text-[var(--accent)]">
+                    {mode === "edit" ? "Edit Memory" : "Add Memory"}
+                </h2>
 
                 <button
                     onClick={handleClose}
@@ -50,6 +54,16 @@ export default function AddMemoryModal({
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
             />
 
+            <label className="mt-3 block text-sm font-medium text-[var(--text)]">
+                Memory date (optional)
+                <input
+                    type="date"
+                    className={fieldClass}
+                    value={form.memoryDate || ""}
+                    onChange={(e) => setForm({ ...form, memoryDate: e.target.value })}
+                />
+            </label>
+
             <input
                 id="memory-image-input"
                 type="file"
@@ -58,12 +72,20 @@ export default function AddMemoryModal({
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
 
+            {previewUrl && (
+                <div
+                    className="mt-3 h-52 rounded-2xl border border-[var(--border)] bg-cover bg-center"
+                    style={{ backgroundImage: `url(${previewUrl})` }}
+                    aria-label="Memory image preview"
+                />
+            )}
+
             <button
                 onClick={onSave}
                 disabled={loading}
                 className="mt-4 w-full rounded-xl bg-[var(--accent)] py-3 text-white transition disabled:opacity-60"
             >
-                {loading ? "Saving..." : "Save Memory"}
+                {loading ? "Saving..." : mode === "edit" ? "Update Memory" : "Save Memory"}
             </button>
         </Modal>
     );

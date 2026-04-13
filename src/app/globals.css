@@ -13,6 +13,9 @@
   --accent: #9d5c63;
   --accent-hover: #7f464f;
   --accent-contrast: #ffffff;
+  --danger: #b42332;
+  --danger-soft: #fff1f2;
+  --danger-border: rgba(180, 35, 50, 0.28);
   --glow: rgba(157, 92, 99, 0.18);
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.07);
   --background: var(--app-bg);
@@ -35,6 +38,9 @@ html[data-theme="eternal"] {
   --accent: #bfa071;
   --accent-hover: #d8b889;
   --accent-contrast: #211f1d;
+  --danger: #f0a3a8;
+  --danger-soft: rgba(148, 62, 75, 0.18);
+  --danger-border: rgba(240, 163, 168, 0.34);
   --glow: rgba(225, 142, 231, 0.26);
   --shadow: 0 22px 58px rgba(0, 0, 0, 0.4);
   --background: var(--app-bg);

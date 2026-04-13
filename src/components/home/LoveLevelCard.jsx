@@ -32,6 +32,12 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
       ? "You are getting closer to the next level."
       : "Your first shared moment will begin the progress.";
 
+  const milestoneMessage = !isConnected
+    ? "Next milestone: connect with your partner."
+    : letterCount <= memoryCount
+      ? "Next milestone: write another letter to grow closer."
+      : "Next milestone: save another memory from your shared world.";
+
   const handleEternalModeClick = () => {
     if (!hasEternalMode) {
       toast("Eternal Mode unlocks at Love Level 10.");
@@ -40,7 +46,7 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
 
     const nextTheme = theme === "eternal" ? "light" : "eternal";
     setSavedTheme(nextTheme);
-    toast.success(nextTheme === "eternal" ? "Eternal Mode on" : "Light mode on");
+    toast.success(nextTheme === "eternal" ? "Eternal Mode on" : "Soft Mode on");
   };
 
   return (
@@ -104,6 +110,9 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
           <p className="mt-3 text-sm font-medium text-[var(--muted)]">
             {progressMessage}
           </p>
+          <p className="mt-1 text-sm text-[var(--accent)]">
+            {milestoneMessage}
+          </p>
         </div>
 
         <div className="eternal-reward-card mt-5 flex flex-col gap-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -129,7 +138,7 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
               : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)]"
               }`}
           >
-            {hasEternalMode ? (theme === "eternal" ? "Light Mode" : "Eternal Mode") : "Unlocks at Level 10"}
+            {hasEternalMode ? (theme === "eternal" ? "Soft Mode" : "Eternal Mode") : "Unlocks at Level 10"}
           </button>
         </div>
       </div>

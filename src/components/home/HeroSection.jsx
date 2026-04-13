@@ -9,8 +9,8 @@ function getInitials(name, email, fallback) {
         .join("");
 }
 
-function AvatarBubble({ profile, fallbackLabel }) {
-    const label = profile?.name || fallbackLabel;
+function AvatarBubble({ profile, fallbackLabel, displayLabel }) {
+    const label = displayLabel || profile?.name || fallbackLabel;
     const initials = getInitials(profile?.name, profile?.email, fallbackLabel);
 
     return (
@@ -51,7 +51,11 @@ export default function HeroSection({ userProfile, partnerProfile, isConnected }
 
                 {/* Avatar */}
                 <div className="mb-10 flex items-center justify-center gap-6">
-                    <AvatarBubble profile={userProfile} fallbackLabel="You" />
+                    <AvatarBubble
+                        profile={userProfile}
+                        fallbackLabel="You"
+                        displayLabel="You"
+                    />
 
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-lg font-semibold text-[var(--accent)] shadow-sm">
                         +
@@ -59,7 +63,8 @@ export default function HeroSection({ userProfile, partnerProfile, isConnected }
 
                     <AvatarBubble
                         profile={isConnected ? partnerProfile : null}
-                        fallbackLabel={isConnected ? "Partner" : "Love"}
+                        fallbackLabel="Your Love"
+                        displayLabel="Your Love"
                     />
                 </div>
 

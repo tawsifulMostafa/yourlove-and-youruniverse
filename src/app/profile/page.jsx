@@ -1,12 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Heart, UserRound } from "lucide-react";
+import { AlertTriangle, Camera, Clock, Heart, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/shared/Navbar";
+import Modal from "@/components/shared/Modal";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { hasEmailLoginPassword, trustCurrentDevice } from "@/lib/auth";
+import { getFriendlyErrorMessage } from "@/lib/errors";
+import {
+    formatDisconnectCountdown,
+    generateDisconnectPhrase,
+    isDisconnectPending,
+} from "@/lib/disconnect";
 
 const fieldClass =
     "mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25 disabled:bg-[var(--surface-soft)] disabled:text-[var(--muted)]";
@@ -24,20 +32,48 @@ function cleanFileName(fileName) {
     return fileName.replace(/[^a-zA-Z0-9.-]/g, "-");
 }
 
+async function addAvatarSignedUrl(profile) {
+    if (!profile?.avatar_path) return { ...profile, avatarUrl: "" };
+
+    const { data, error } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(profile.avatar_path, 60 * 60);
+
+    if (error) {
+        console.error("Partner avatar signed URL error:", error.message);
+        return { ...profile, avatarUrl: "" };
+    }
+
+    return { ...profile, avatarUrl: data.signedUrl };
+}
+
 export default function ProfilePage() {
     const router = useRouter();
     const fileInputRef = useRef(null);
     const previewUrlRef = useRef(null);
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [couple, setCouple] = useState(null);
+    const [hasPartner, setHasPartner] = useState(false);
+    const [partnerProfile, setPartnerProfile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState("");
     const [selectedFile, setSelectedFile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [disconnecting, setDisconnecting] = useState(false);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+    const [disconnectPhrase, setDisconnectPhrase] = useState("");
+    const [disconnectInput, setDisconnectInput] = useState("");
     const [form, setForm] = useState({
         name: "",
         email: "",
         about: "",
+    });
+    const [passwordForm, setPasswordForm] = useState({
+        password: "",
+        confirmPassword: "",
     });
 
     const loadProfile = useCallback(async () => {
@@ -54,6 +90,11 @@ export default function ProfilePage() {
         }
 
         setUser(user);
+
+        if (!hasEmailLoginPassword(user)) {
+            router.replace("/auth/setup-password");
+            return;
+        }
 
         const { data: profileData, error: profileError } = await supabase
             .from("profiles")
@@ -72,6 +113,9 @@ export default function ProfilePage() {
             };
 
             setProfile(fallbackProfile);
+            setCouple(null);
+            setHasPartner(false);
+            setPartnerProfile(null);
             setForm({
                 name: fallbackProfile.name,
                 email: fallbackProfile.email || "",
@@ -83,11 +127,42 @@ export default function ProfilePage() {
         }
 
         setProfile(profileData);
+        setCouple(null);
+        setHasPartner(false);
+        setPartnerProfile(null);
         setForm({
             name: profileData.name || user.user_metadata?.name || "",
             email: profileData.email || user.email || "",
             about: profileData.about || "",
         });
+
+        if (profileData.couple_id) {
+            const { data: coupleData, error: coupleError } = await supabase
+                .from("couples")
+                .select("*")
+                .eq("id", profileData.couple_id)
+                .maybeSingle();
+
+            if (coupleError) {
+                console.error("Couple load error:", coupleError.message);
+            } else {
+                setCouple(coupleData);
+            }
+
+            const { data: partnerData, error: partnerError } = await supabase
+                .from("profiles")
+                .select("id, name, email, about, avatar_path")
+                .eq("couple_id", profileData.couple_id)
+                .neq("id", user.id)
+                .maybeSingle();
+
+            if (partnerError) {
+                console.error("Partner load error:", partnerError.message);
+            } else {
+                setHasPartner(Boolean(partnerData));
+                setPartnerProfile(partnerData ? await addAvatarSignedUrl(partnerData) : null);
+            }
+        }
 
         if (profileData.avatar_path) {
             const { data: signedData, error: signedError } = await supabase.storage
@@ -161,6 +236,7 @@ export default function ProfilePage() {
                 const { error: uploadError } = await supabase.storage
                     .from("avatars")
                     .upload(filePath, selectedFile, {
+                        contentType: selectedFile.type,
                         upsert: true,
                     });
 
@@ -200,9 +276,126 @@ export default function ProfilePage() {
         setSaving(false);
     };
 
+    const handlePasswordSave = async () => {
+        const password = passwordForm.password.trim();
+        const confirmPassword = passwordForm.confirmPassword.trim();
+
+        if (password.length < 8) {
+            toast.error("Password must be at least 8 characters");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        setPasswordSaving(true);
+
+        const { error } = await supabase.auth.updateUser({
+            password,
+            data: {
+                ...(user?.user_metadata || {}),
+                password_set: true,
+            },
+        });
+
+        setPasswordSaving(false);
+
+        if (error) {
+            toast.error(error.message);
+            return;
+        }
+
+        setPasswordForm({ password: "", confirmPassword: "" });
+        if (user?.id) trustCurrentDevice(user.id);
+        toast.success("Password saved");
+        setShowPasswordModal(false);
+        await loadProfile();
+    };
+
+    const closePasswordModal = () => {
+        setShowPasswordModal(false);
+        setPasswordForm({ password: "", confirmPassword: "" });
+    };
+
+    const openDisconnectModal = () => {
+        setDisconnectPhrase(generateDisconnectPhrase());
+        setDisconnectInput("");
+        setShowDisconnectModal(true);
+    };
+
+    const closeDisconnectModal = () => {
+        setShowDisconnectModal(false);
+        setDisconnectInput("");
+    };
+
+    const handleRequestDisconnect = async () => {
+        if (disconnectInput !== disconnectPhrase) return;
+
+        setDisconnecting(true);
+
+        const { error } = await supabase.rpc("request_partner_disconnect", {});
+
+        if (error) {
+            toast.error(getFriendlyErrorMessage(error));
+            setDisconnecting(false);
+            return;
+        }
+
+        toast.success("Disconnect scheduled. You can cancel within 24 hours.");
+        closeDisconnectModal();
+        await loadProfile();
+        setDisconnecting(false);
+    };
+
+    const handleCancelDisconnect = async () => {
+        setDisconnecting(true);
+
+        const { error } = await supabase.rpc("cancel_partner_disconnect", {});
+
+        if (error) {
+            toast.error(getFriendlyErrorMessage(error));
+            setDisconnecting(false);
+            return;
+        }
+
+        toast.success("Disconnect canceled");
+        await loadProfile();
+        setDisconnecting(false);
+    };
+
+    const handleResetInviteSpace = async () => {
+        if (!profile?.couple_id || hasPartner || disconnectPending) return;
+
+        setDisconnecting(true);
+
+        const { error } = await supabase.rpc("reset_empty_invite_space");
+
+        if (error) {
+            toast.error(getFriendlyErrorMessage(error));
+            setDisconnecting(false);
+            return;
+        }
+
+        toast.success("Invite space reset");
+        await loadProfile();
+        setDisconnecting(false);
+    };
+
     const initials = getInitials(form.name, form.email);
     const displayName = form.name.trim() || "Your name";
     const displayEmail = form.email || "your@email.com";
+    const disconnectPending = isDisconnectPending(couple);
+    const disconnectCountdown = formatDisconnectCountdown(couple?.disconnect_delete_after);
+
+    if (loading) {
+        return (
+            <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg-soft)] px-4">
+                <p className="text-sm font-medium text-[var(--muted)]">Loading...</p>
+            </main>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[var(--app-bg-soft)]">
@@ -338,17 +531,50 @@ export default function ProfilePage() {
                     <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
                         <div className="flex items-start gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent)]">
-                                <Heart size={18} />
+                                {disconnectPending ? <Clock size={18} /> : <Heart size={18} />}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-semibold text-[var(--text)]">
-                                    {profile?.couple_id ? "Connected to partner" : "Not connected yet"}
+                                    {disconnectPending
+                                        ? "Disconnect scheduled"
+                                        : profile?.couple_id
+                                            ? hasPartner
+                                                ? "Connected to partner"
+                                                : "Waiting for partner"
+                                            : "Not connected yet"}
                                 </p>
                                 <p className="mt-1 text-sm text-[var(--muted)]">
-                                    {profile?.couple_id
-                                        ? "Your private world is active."
-                                        : "Start your shared space with an invite code."}
+                                    {disconnectPending
+                                        ? `Your shared world is paused. You can cancel within ${disconnectCountdown}.`
+                                        : profile?.couple_id
+                                            ? hasPartner
+                                                ? "Your private world is active."
+                                                : `Share your invite code${couple?.invite_code ? `: ${couple.invite_code}` : ""}.`
+                                            : "Start your shared space with an invite code."}
                                 </p>
+                                {hasPartner && partnerProfile && !disconnectPending && (
+                                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--surface-accent)] text-sm font-semibold text-[var(--accent)]">
+                                            {partnerProfile.avatarUrl ? (
+                                                <div
+                                                    className="h-full w-full bg-cover bg-center"
+                                                    style={{ backgroundImage: `url(${partnerProfile.avatarUrl})` }}
+                                                    aria-label="Partner profile photo"
+                                                />
+                                            ) : (
+                                                getInitials(partnerProfile.name, partnerProfile.email)
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-[var(--text)]">
+                                                {partnerProfile.name || "Your partner"}
+                                            </p>
+                                            <p className="line-clamp-2 text-sm text-[var(--muted)]">
+                                                {partnerProfile.about || "Sharing this private world with you."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                                 {!profile?.couple_id && (
                                     <Link
                                         href="/connect"
@@ -356,6 +582,47 @@ export default function ProfilePage() {
                                     >
                                         Connect now
                                     </Link>
+                                )}
+                                {profile?.couple_id && (
+                                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                                        {disconnectPending ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleCancelDisconnect}
+                                                disabled={disconnecting}
+                                                className="inline-flex rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
+                                            >
+                                                {disconnecting ? "Canceling..." : "Cancel disconnect"}
+                                            </button>
+                                        ) : hasPartner ? (
+                                            <button
+                                                type="button"
+                                                onClick={openDisconnectModal}
+                                                disabled={disconnecting}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-[var(--danger-border)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-[var(--danger-soft)] disabled:opacity-60"
+                                            >
+                                                <Trash2 size={16} />
+                                                Disconnect partner
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    href="/connect"
+                                                    className="inline-flex rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--accent)] transition hover:bg-[var(--surface-accent)]"
+                                                >
+                                                    View invite code
+                                                </Link>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleResetInviteSpace}
+                                                    disabled={disconnecting}
+                                                    className="inline-flex rounded-lg border border-[var(--danger-border)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-[var(--danger-soft)] disabled:opacity-60"
+                                                >
+                                                    {disconnecting ? "Resetting..." : "Reset invite space"}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -369,6 +636,23 @@ export default function ProfilePage() {
                     >
                         {saving ? "Saving your profile..." : "Save Changes"}
                     </button>
+
+                        <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                            <p className="text-sm font-semibold text-[var(--text)]">
+                                Email login password
+                            </p>
+                            <p className="mt-1 text-sm text-[var(--muted)]">
+                                New devices will still need an email code.
+                            </p>
+
+                            <button
+                                type="button"
+                                onClick={() => setShowPasswordModal(true)}
+                                className="mt-4 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--surface-accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Change Password
+                            </button>
+                        </div>
 
                         <div className="mt-6 border-t border-[var(--border)] pt-5">
                             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
@@ -399,6 +683,121 @@ export default function ProfilePage() {
                     </div>
                 </section>
             </main>
+
+            <Modal isOpen={showPasswordModal} onClose={closePasswordModal} maxWidth="max-w-lg">
+                <div>
+                    <h2 className="text-xl font-semibold text-[var(--text)]">
+                        Change Password
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                        Set a new password for email login. New devices will still ask for an email code.
+                    </p>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                    <input
+                        type="password"
+                        className={fieldClass}
+                        placeholder="New password"
+                        value={passwordForm.password}
+                        onChange={(event) =>
+                            setPasswordForm((current) => ({
+                                ...current,
+                                password: event.target.value,
+                            }))
+                        }
+                        autoComplete="new-password"
+                    />
+                    <input
+                        type="password"
+                        className={fieldClass}
+                        placeholder="Confirm new password"
+                        value={passwordForm.confirmPassword}
+                        onChange={(event) =>
+                            setPasswordForm((current) => ({
+                                ...current,
+                                confirmPassword: event.target.value,
+                            }))
+                        }
+                        autoComplete="new-password"
+                    />
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={closePasswordModal}
+                        disabled={passwordSaving}
+                        className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--text)] disabled:opacity-60"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handlePasswordSave}
+                        disabled={passwordSaving}
+                        className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {passwordSaving ? "Saving..." : "Save Password"}
+                    </button>
+                </div>
+            </Modal>
+
+            <Modal isOpen={showDisconnectModal} onClose={closeDisconnectModal} maxWidth="max-w-lg">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--danger-soft)] text-[var(--danger)]">
+                        <AlertTriangle size={22} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-semibold text-[var(--text)]">
+                            Disconnect partner?
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                            Your shared world will pause now. You can cancel within 24 hours. After that, letters, memories, and the couple connection will be deleted.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
+                    Type this phrase to confirm:
+                    <span className="mt-2 block select-none rounded-lg bg-[var(--surface)] px-3 py-2 font-mono font-semibold text-[var(--danger)]">
+                        {disconnectPhrase}
+                    </span>
+                </div>
+
+                <label className="mt-5 block text-sm font-medium text-[var(--text)]">
+                    Type this phrase to confirm
+                    <input
+                        value={disconnectInput}
+                        onChange={(event) => setDisconnectInput(event.target.value)}
+                        onPaste={(event) => event.preventDefault()}
+                        onDrop={(event) => event.preventDefault()}
+                        onContextMenu={(event) => event.preventDefault()}
+                        autoComplete="off"
+                        spellCheck={false}
+                        className={fieldClass}
+                        placeholder={disconnectPhrase}
+                    />
+                </label>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={closeDisconnectModal}
+                        className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:text-[var(--text)]"
+                    >
+                        Keep connected
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleRequestDisconnect}
+                        disabled={disconnecting || disconnectInput !== disconnectPhrase}
+                        className="rounded-xl bg-[var(--danger)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {disconnecting ? "Scheduling..." : "Start disconnect"}
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 }

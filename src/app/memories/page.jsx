@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 import { supabase } from "@/lib/supabase";
@@ -10,19 +10,27 @@ import MemoryCard from "@/components/memories/MemoryCard";
 import AddMemoryModal from "@/components/memories/AddMemoryModal";
 import MemoryDetailModal from "@/components/memories/MemoryDetailModal";
 import { useRouter } from "next/navigation";
+import { formatDisconnectCountdown, isDisconnectPending } from "@/lib/disconnect";
+import { hasEmailLoginPassword } from "@/lib/auth";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 export default function MemoriesPage() {
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [couple, setCouple] = useState(null);
     const [memories, setMemories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingMemory, setEditingMemory] = useState(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState("");
+    const filePreviewUrlRef = useRef("");
 
     const [form, setForm] = useState({
         title: "",
         note: "",
+        memoryDate: "",
     });
 
     const [file, setFile] = useState(null);
@@ -35,6 +43,11 @@ export default function MemoriesPage() {
 
         if (userError || !user) {
             router.push("/login");
+            return;
+        }
+
+        if (!hasEmailLoginPassword(user)) {
+            router.push("/auth/setup-password");
             return;
         }
 
@@ -53,10 +66,23 @@ export default function MemoriesPage() {
         }
 
         setProfile(profileData);
+        setCouple(null);
 
         if (!profileData.couple_id) {
             setMemories([]);
             return;
+        }
+
+        const { data: coupleData, error: coupleError } = await supabase
+            .from("couples")
+            .select("*")
+            .eq("id", profileData.couple_id)
+            .maybeSingle();
+
+        if (coupleError) {
+            console.error("Couple load error:", coupleError.message);
+        } else {
+            setCouple(coupleData);
         }
 
         const { data: memoriesData, error: memoriesError } = await supabase
@@ -101,19 +127,60 @@ export default function MemoriesPage() {
         loadData();
     }, [loadData]);
 
+    useEffect(() => {
+        return () => {
+            if (filePreviewUrlRef.current) {
+                URL.revokeObjectURL(filePreviewUrlRef.current);
+            }
+        };
+    }, []);
+
+    const handleSetFile = (nextFile) => {
+        if (filePreviewUrlRef.current) {
+            URL.revokeObjectURL(filePreviewUrlRef.current);
+            filePreviewUrlRef.current = "";
+        }
+
+        setFile(nextFile);
+
+        if (nextFile) {
+            const nextPreviewUrl = URL.createObjectURL(nextFile);
+            filePreviewUrlRef.current = nextPreviewUrl;
+            setFilePreviewUrl(nextPreviewUrl);
+        } else {
+            setFilePreviewUrl("");
+        }
+    };
+
     const resetForm = () => {
         setForm({
             title: "",
             note: "",
+            memoryDate: "",
         });
-        setFile(null);
+        handleSetFile(null);
+        setEditingMemory(null);
 
         const fileInput = document.getElementById("memory-image-input");
         if (fileInput) fileInput.value = "";
     };
 
-    const handleCreate = async () => {
-        if (!form.title || !file) {
+    const createMemoryFileName = (fileName) => {
+        const fileExt = fileName.split(".").pop();
+        const randomValues = new Uint32Array(2);
+        crypto.getRandomValues(randomValues);
+        const randomSuffix = Array.from(randomValues, (value) => value.toString(36)).join("-");
+
+        return `${Date.now()}-${randomSuffix}.${fileExt}`;
+    };
+
+    const handleSaveMemory = async () => {
+        if (isDisconnectPending(couple)) {
+            toast.error("Your shared world is paused while disconnect is scheduled.");
+            return;
+        }
+
+        if (!form.title || (!file && !editingMemory)) {
             toast.error("Title and image are required");
             return;
         }
@@ -126,38 +193,50 @@ export default function MemoriesPage() {
         setLoading(true);
 
         try {
-            const fileExt = file.name.split(".").pop();
-            const fileName = `${Date.now()}-${Math.random()
-                .toString(36)
-                .slice(2)}.${fileExt}`;
+            let filePath = editingMemory?.image_url || null;
 
-            const filePath = `${profile.couple_id}/${fileName}`;
+            if (file) {
+                const fileName = createMemoryFileName(file.name);
 
-            const { error: uploadError } = await supabase.storage
-                .from("memories")
-                .upload(filePath, file);
+                filePath = `${profile.couple_id}/${fileName}`;
 
-            if (uploadError) {
-                toast.error(uploadError.message);
-                setLoading(false);
-                return;
+                const { error: uploadError } = await supabase.storage
+                    .from("memories")
+                    .upload(filePath, file, {
+                        contentType: file.type,
+                    });
+
+                if (uploadError) {
+                    toast.error(getFriendlyErrorMessage(uploadError));
+                    setLoading(false);
+                    return;
+                }
             }
 
-            const { error: insertError } = await supabase.from("memories").insert({
+            const payload = {
                 couple_id: profile.couple_id,
                 user_id: user.id,
                 title: form.title,
                 note: form.note,
+                memory_date: form.memoryDate || null,
                 image_url: filePath,
-            });
+            };
 
-            if (insertError) {
-                toast.error(insertError.message);
+            const { error: saveError } = editingMemory
+                ? await supabase
+                    .from("memories")
+                    .update(payload)
+                    .eq("id", editingMemory.id)
+                    .eq("couple_id", profile.couple_id)
+                : await supabase.from("memories").insert(payload);
+
+            if (saveError) {
+                toast.error(getFriendlyErrorMessage(saveError));
                 setLoading(false);
                 return;
             }
 
-            toast.success("Memory added");
+            toast.success(editingMemory ? "Memory updated" : "Memory added");
             resetForm();
             setShowAddModal(false);
             await loadData();
@@ -168,6 +247,47 @@ export default function MemoriesPage() {
 
         setLoading(false);
     };
+
+    const handleStartEdit = (memory) => {
+        setSelectedMemory(null);
+        setEditingMemory(memory);
+        setForm({
+            title: memory.title || "",
+            note: memory.note || "",
+            memoryDate: memory.memory_date || "",
+        });
+        handleSetFile(null);
+        setShowAddModal(true);
+    };
+
+    const handleDelete = async (memory) => {
+        if (!profile?.couple_id || disconnectPending) return;
+
+        const { error } = await supabase
+            .from("memories")
+            .delete()
+            .eq("id", memory.id)
+            .eq("couple_id", profile.couple_id);
+
+        if (error) {
+            toast.error(getFriendlyErrorMessage(error));
+            return;
+        }
+
+        if (memory.image_url) {
+            const { error: storageError } = await supabase.storage
+                .from("memories")
+                .remove([memory.image_url]);
+
+            if (storageError) console.error("Memory image delete error:", storageError.message);
+        }
+
+        toast.success("Memory deleted");
+        if (selectedMemory?.id === memory.id) setSelectedMemory(null);
+        await loadData();
+    };
+
+    const disconnectPending = isDisconnectPending(couple);
 
     return (
         <div className="min-h-screen bg-[var(--app-bg-soft)]">
@@ -185,7 +305,15 @@ export default function MemoriesPage() {
                     </div>
 
                     <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            if (disconnectPending) {
+                                toast.error("Your shared world is paused while disconnect is scheduled.");
+                                return;
+                            }
+
+                            setShowAddModal(true);
+                        }}
+                        disabled={disconnectPending}
                         className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-white shadow-[var(--shadow)] transition hover:scale-105"
                         aria-label="Add memory"
                         title="Add memory"
@@ -195,6 +323,12 @@ export default function MemoriesPage() {
                 </div>
 
                 <div className="mt-10">
+                    {disconnectPending && (
+                        <div className="mb-6 rounded-3xl border border-[var(--danger-border)] bg-[var(--danger-soft)] p-5 text-sm text-[var(--danger)] shadow-[var(--shadow)]">
+                            Your shared world is paused. You can cancel disconnect within {formatDisconnectCountdown(couple?.disconnect_delete_after)} from Profile.
+                        </div>
+                    )}
+
                     {memories.length === 0 ? (
                         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-12 text-center shadow-[var(--shadow)]">
                             <p className="text-lg font-medium text-[var(--text)]">
@@ -205,11 +339,19 @@ export default function MemoriesPage() {
                             </p>
 
                             <button
-                                onClick={() => setShowAddModal(true)}
-                                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-white"
+                                onClick={() => {
+                                    if (disconnectPending) {
+                                        toast.error("Your shared world is paused while disconnect is scheduled.");
+                                        return;
+                                    }
+
+                                    setShowAddModal(true);
+                                }}
+                                disabled={disconnectPending}
+                                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <Plus size={18} />
-                                Add your first memory
+                                {disconnectPending ? "Paused during disconnect" : "Add your first memory"}
                             </button>
                         </div>
                     ) : (
@@ -219,7 +361,10 @@ export default function MemoriesPage() {
                                     key={memory.id}
                                     memory={memory}
                                     onClick={setSelectedMemory}
+                                    onEdit={handleStartEdit}
+                                    onDelete={handleDelete}
                                     formatTime={formatMemoryTime}
+                                    disabledActions={disconnectPending}
                                 />
                             ))}
                         </div>
@@ -233,10 +378,12 @@ export default function MemoriesPage() {
                 form={form}
                 setForm={setForm}
                 file={file}
-                setFile={setFile}
-                onSave={handleCreate}
+                setFile={handleSetFile}
+                onSave={handleSaveMemory}
                 loading={loading}
                 onReset={resetForm}
+                previewUrl={filePreviewUrl || editingMemory?.signedUrl || ""}
+                mode={editingMemory ? "edit" : "add"}
             />
 
             <MemoryDetailModal
