@@ -58,6 +58,10 @@ Run in this order:
   - `couples.dare_done_count` counter
   - same-couple read policy
   - RPCs for sending, accepting/declining, and confirming partner dares
+6. `supabase-quiz-setup.sql`
+  - `quiz_rooms` and `quiz_answers` tables
+  - same-couple read policies
+  - RPCs for starting a quiz battle and answering questions
 
 If a policy already exists error appears, run the newest SQL file again; these files use `drop policy if exists` for the app-owned policy names.
 
@@ -107,4 +111,6 @@ If a policy already exists error appears, run the newest SQL file again; these f
 - Dare receiver can accept or decline.
 - Dare sender can confirm accepted dares as done.
 - Done dares disappear and increment `dare_done_count`; declined dares disappear.
+- Connected users can start a 20-question Quiz Battle.
+- Both partners see the same quiz room and scores update after polling.
 - Eternal Mode stays locked below Love Level 10 and unlocks at Level 10.

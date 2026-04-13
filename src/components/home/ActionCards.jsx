@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, Flame, Mail, UserRound } from "lucide-react";
+import { Camera, Flame, Gamepad2, Mail } from "lucide-react";
 
 const actions = [
   {
@@ -24,10 +24,10 @@ const actions = [
     className: "bg-[#eed3ff] text-[#553363]",
   },
   {
-    title: "Your Profile",
-    href: "/profile",
-    caption: "Update your corner",
-    icon: UserRound,
+    title: "Play Quiz",
+    href: "/play",
+    caption: "Battle together",
+    icon: Gamepad2,
     className: "bg-[#d8f2d2] text-[#365b32]",
   },
 ];

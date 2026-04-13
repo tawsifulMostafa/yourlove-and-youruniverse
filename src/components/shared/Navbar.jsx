@@ -161,6 +161,10 @@ export default function Navbar({ showLogout = true }) {
             Dares
           </Link>
 
+          <Link href="/play" className={linkClass("/play")}>
+            Play
+          </Link>
+
           <Link href="/profile" className={linkClass("/profile")}>
             Profile
           </Link>
@@ -205,6 +209,10 @@ export default function Navbar({ showLogout = true }) {
 
             <Link href="/dares" className={mobileLinkClass("/dares")}>
               Dares
+            </Link>
+
+            <Link href="/play" className={mobileLinkClass("/play")}>
+              Play
             </Link>
 
             <Link href="/profile" className={mobileLinkClass("/profile")}>
