@@ -194,6 +194,7 @@ export default function MemoriesPage() {
 
         try {
             let filePath = editingMemory?.image_url || null;
+            const previousImagePath = editingMemory?.image_url || null;
 
             if (file) {
                 const fileName = createMemoryFileName(file.name);
@@ -231,9 +232,25 @@ export default function MemoriesPage() {
                 : await supabase.from("memories").insert(payload);
 
             if (saveError) {
+                if (file && filePath) {
+                    const { error: cleanupError } = await supabase.storage
+                        .from("memories")
+                        .remove([filePath]);
+
+                    if (cleanupError) console.error("New memory image cleanup error:", cleanupError.message);
+                }
+
                 toast.error(getFriendlyErrorMessage(saveError));
                 setLoading(false);
                 return;
+            }
+
+            if (editingMemory && previousImagePath && previousImagePath !== filePath) {
+                const { error: oldImageDeleteError } = await supabase.storage
+                    .from("memories")
+                    .remove([previousImagePath]);
+
+                if (oldImageDeleteError) console.error("Old memory image cleanup error:", oldImageDeleteError.message);
             }
 
             toast.success(editingMemory ? "Memory updated" : "Memory added");
@@ -289,6 +306,21 @@ export default function MemoriesPage() {
 
     const disconnectPending = isDisconnectPending(couple);
 
+    const handleOpenAddMemory = () => {
+        if (disconnectPending) {
+            toast.error("Your shared world is paused while disconnect is scheduled.");
+            return;
+        }
+
+        if (!profile?.couple_id) {
+            toast.error("Connect with your partner first");
+            router.push("/connect");
+            return;
+        }
+
+        setShowAddModal(true);
+    };
+
     return (
         <div className="min-h-screen bg-[var(--app-bg-soft)]">
             <Navbar />
@@ -305,14 +337,7 @@ export default function MemoriesPage() {
                     </div>
 
                     <button
-                        onClick={() => {
-                            if (disconnectPending) {
-                                toast.error("Your shared world is paused while disconnect is scheduled.");
-                                return;
-                            }
-
-                            setShowAddModal(true);
-                        }}
+                        onClick={handleOpenAddMemory}
                         disabled={disconnectPending}
                         className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-white shadow-[var(--shadow)] transition hover:scale-105"
                         aria-label="Add memory"
@@ -339,19 +364,16 @@ export default function MemoriesPage() {
                             </p>
 
                             <button
-                                onClick={() => {
-                                    if (disconnectPending) {
-                                        toast.error("Your shared world is paused while disconnect is scheduled.");
-                                        return;
-                                    }
-
-                                    setShowAddModal(true);
-                                }}
+                                onClick={handleOpenAddMemory}
                                 disabled={disconnectPending}
                                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <Plus size={18} />
-                                {disconnectPending ? "Paused during disconnect" : "Add your first memory"}
+                                {disconnectPending
+                                    ? "Paused during disconnect"
+                                    : profile?.couple_id
+                                        ? "Add your first memory"
+                                        : "Connect first"}
                             </button>
                         </div>
                     ) : (

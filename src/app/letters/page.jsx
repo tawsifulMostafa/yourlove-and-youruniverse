@@ -182,6 +182,12 @@ export default function LettersPage() {
     };
 
     const handleNewLetter = () => {
+        if (!profile?.couple_id) {
+            toast.error("Connect with your partner first");
+            router.push("/connect");
+            return;
+        }
+
         setForm(emptyForm);
         setEditingLetter(null);
         setShowLetterModal(true);
@@ -307,7 +313,7 @@ export default function LettersPage() {
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[var(--accent)] transition hover:opacity-90 disabled:opacity-60"
                             >
                                 <Plus size={18} />
-                                New Letter
+                                {profile?.couple_id ? "New Letter" : "Connect first"}
                             </button>
                         </div>
                     </div>
@@ -334,7 +340,7 @@ export default function LettersPage() {
                                 disabled={disconnectPending}
                                 className="mt-6 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
                             >
-                                Write the first letter
+                                {profile?.couple_id ? "Write the first letter" : "Connect first"}
                             </button>
                         </div>
                     ) : (

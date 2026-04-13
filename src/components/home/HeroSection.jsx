@@ -106,10 +106,10 @@ export default function HeroSection({
                                     </Link>
                                 )}
                                 <Link
-                                    href="/memories"
+                                    href={hasSharedSpace ? "/memories" : "/connect"}
                                     className="rounded-xl border border-white/45 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/12"
                                 >
-                                    Save a memory
+                                    {hasSharedSpace ? "Save a memory" : "Connect first"}
                                 </Link>
                             </div>
                         </div>
