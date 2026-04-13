@@ -17,6 +17,23 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "YourLove",
   description: "A private space for two.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "YourLove",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+};
+
+export const viewport = {
+  themeColor: "#9d5c63",
 };
 
 export default function RootLayout({ children }) {
