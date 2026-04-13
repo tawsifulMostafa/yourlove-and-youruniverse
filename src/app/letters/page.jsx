@@ -1,14 +1,110 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { Edit3, Mail, Plus, Trash2 } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 import Modal from "@/components/shared/Modal";
+import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { formatDisconnectCountdown, isDisconnectPending } from "@/lib/disconnect";
 import { hasEmailLoginPassword } from "@/lib/auth";
-import { useRouter } from "next/navigation";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+
+const CATEGORY_OPTIONS = [
+    "Miss me",
+    "Feeling sad",
+    "Need courage",
+    "Can't sleep",
+    "Anytime",
+    "Custom",
+];
+
+const emptyForm = {
+    title: "",
+    condition: "Anytime",
+    customCondition: "",
+    message: "",
+};
+
+const fieldClass =
+    "mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25";
+
+function getConditionFromForm(form) {
+    if (form.condition === "Custom") return form.customCondition.trim();
+    return form.condition;
+}
+
+function getFormFromLetter(letter) {
+    const condition = letter.open_condition || "Anytime";
+    const isKnownCondition = CATEGORY_OPTIONS.includes(condition);
+
+    return {
+        title: letter.title || "",
+        condition: isKnownCondition ? condition : "Custom",
+        customCondition: isKnownCondition ? "" : condition,
+        message: letter.message || "",
+    };
+}
+
+function LetterCard({ letter, disconnectPending, onOpen, onEdit, onDelete }) {
+    return (
+        <article className="group relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)] transition duration-200 hover:-translate-y-1">
+            <div className="absolute inset-x-0 top-0 h-12 bg-[var(--surface-accent)] opacity-70" />
+            <div className="relative">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-accent)] text-[var(--accent)]">
+                        <Mail size={22} />
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${letter.is_opened
+                        ? "bg-[var(--surface-soft)] text-[var(--muted)]"
+                        : "bg-[var(--accent)] text-[var(--accent-contrast)]"
+                        }`}>
+                        {letter.is_opened ? "Opened" : "Sealed"}
+                    </span>
+                </div>
+
+                <h3 className="mt-5 text-lg font-semibold text-[var(--text)]">
+                    {letter.title}
+                </h3>
+                <p className="mt-2 w-fit rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                    Open when {letter.open_condition || "Anytime"}
+                </p>
+                <p className="mt-4 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
+                    {letter.is_opened ? letter.message : "A sealed note waiting for the right moment."}
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onOpen(letter)}
+                        className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90"
+                    >
+                        {letter.is_opened ? "Read Again" : "Open"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onEdit(letter)}
+                        disabled={disconnectPending}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--surface-accent)] disabled:opacity-60"
+                    >
+                        <Edit3 size={15} />
+                        Edit
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onDelete(letter)}
+                        disabled={disconnectPending}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[var(--danger-border)] px-4 py-2 text-sm font-semibold text-[var(--danger)] transition hover:bg-[var(--danger-soft)] disabled:opacity-60"
+                    >
+                        <Trash2 size={15} />
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </article>
+    );
+}
 
 export default function LettersPage() {
     const router = useRouter();
@@ -18,15 +114,9 @@ export default function LettersPage() {
     const [letters, setLetters] = useState([]);
     const [selectedLetter, setSelectedLetter] = useState(null);
     const [editingLetter, setEditingLetter] = useState(null);
+    const [showLetterModal, setShowLetterModal] = useState(false);
 
-    const [form, setForm] = useState({
-        title: "",
-        condition: "",
-        message: "",
-    });
-
-    const fieldClass =
-        "mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/25";
+    const [form, setForm] = useState(emptyForm);
 
     const loadData = useCallback(async () => {
         const {
@@ -53,6 +143,7 @@ export default function LettersPage() {
 
         setProfile(profileData);
         setCouple(null);
+        setLetters([]);
 
         if (!profileData?.couple_id) return;
 
@@ -82,8 +173,28 @@ export default function LettersPage() {
         loadData();
     }, [loadData]);
 
-    const handleCreate = async () => {
-        if (isDisconnectPending(couple)) {
+    const disconnectPending = isDisconnectPending(couple);
+
+    const resetLetterForm = () => {
+        setForm(emptyForm);
+        setEditingLetter(null);
+        setShowLetterModal(false);
+    };
+
+    const handleNewLetter = () => {
+        setForm(emptyForm);
+        setEditingLetter(null);
+        setShowLetterModal(true);
+    };
+
+    const handleStartEdit = (letter) => {
+        setEditingLetter(letter);
+        setForm(getFormFromLetter(letter));
+        setShowLetterModal(true);
+    };
+
+    const handleSaveLetter = async () => {
+        if (disconnectPending) {
             toast.error("Your shared world is paused while disconnect is scheduled.");
             return;
         }
@@ -93,31 +204,47 @@ export default function LettersPage() {
             return;
         }
 
-        if (!form.title || !form.message) {
-            toast.error("Fill all fields");
+        const condition = getConditionFromForm(form);
+        const trimmedTitle = form.title.trim();
+        const trimmedMessage = form.message.trim();
+
+        if (!trimmedTitle || !trimmedMessage) {
+            toast.error("Title and message are required");
             return;
         }
 
-        const { error } = await supabase.from("letters").insert({
-            couple_id: profile.couple_id,
-            sender_id: user.id,
-            title: form.title,
-            open_condition: form.condition,
-            message: form.message,
-        });
+        if (!condition) {
+            toast.error("Choose when this letter should be opened");
+            return;
+        }
+
+        const payload = {
+            title: trimmedTitle,
+            open_condition: condition,
+            message: trimmedMessage,
+        };
+
+        const { error } = editingLetter
+            ? await supabase
+                .from("letters")
+                .update(payload)
+                .eq("id", editingLetter.id)
+                .eq("couple_id", profile.couple_id)
+            : await supabase.from("letters").insert({
+                ...payload,
+                couple_id: profile.couple_id,
+                sender_id: user.id,
+            });
 
         if (error) {
             toast.error(getFriendlyErrorMessage(error));
             return;
         }
 
-        toast.success("Letter saved");
-
-        setForm({ title: "", condition: "", message: "" });
-        loadData();
+        toast.success(editingLetter ? "Letter updated" : "Letter saved");
+        resetLetterForm();
+        await loadData();
     };
-
-    const disconnectPending = isDisconnectPending(couple);
 
     const handleOpen = async (letter) => {
         if (!letter.is_opened) {
@@ -135,46 +262,8 @@ export default function LettersPage() {
         );
     };
 
-    const handleStartEdit = (letter) => {
-        setEditingLetter(letter);
-        setForm({
-            title: letter.title || "",
-            condition: letter.open_condition || "",
-            message: letter.message || "",
-        });
-    };
-
-    const handleUpdate = async () => {
-        if (!editingLetter || disconnectPending) return;
-
-        if (!form.title || !form.message) {
-            toast.error("Fill title and message");
-            return;
-        }
-
-        const { error } = await supabase
-            .from("letters")
-            .update({
-                title: form.title,
-                open_condition: form.condition,
-                message: form.message,
-            })
-            .eq("id", editingLetter.id)
-            .eq("couple_id", profile.couple_id);
-
-        if (error) {
-            toast.error(getFriendlyErrorMessage(error));
-            return;
-        }
-
-        toast.success("Letter updated");
-        setEditingLetter(null);
-        setForm({ title: "", condition: "", message: "" });
-        await loadData();
-    };
-
     const handleDelete = async (letter) => {
-        if (!profile?.couple_id) return;
+        if (!profile?.couple_id || disconnectPending) return;
 
         const { error } = await supabase
             .from("letters")
@@ -196,131 +285,174 @@ export default function LettersPage() {
         <div className="min-h-screen bg-[var(--app-bg-soft)]">
             <Navbar />
 
-            <div className="mx-auto max-w-3xl px-6 py-10">
-                <h1 className="text-center text-3xl font-semibold text-[var(--accent)]">
-                    Open When Letters
-                </h1>
+            <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+                <section className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+                    <div className="bg-[linear-gradient(135deg,#d68d86_0%,#bd6f78_55%,#9d5c63_100%)] p-7 text-white sm:p-10">
+                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/80">
+                            Letter box
+                        </p>
+                        <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h1 className="text-4xl font-semibold tracking-tight">
+                                    Open When Letters
+                                </h1>
+                                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85">
+                                    Keep words ready for the moments they need them.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleNewLetter}
+                                disabled={disconnectPending}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[var(--accent)] transition hover:opacity-90 disabled:opacity-60"
+                            >
+                                <Plus size={18} />
+                                New Letter
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
-                {/* Create Card */}
-                <div className="mt-8 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-                    <h2 className="text-xl font-semibold text-[var(--accent)]">
-                        {editingLetter ? "Edit Letter" : "Write a Letter"}
-                    </h2>
+                {disconnectPending && (
+                    <div className="mt-6 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
+                        Your shared world is paused. You can cancel disconnect within {formatDisconnectCountdown(couple?.disconnect_delete_after)} from Profile.
+                    </div>
+                )}
 
-                    {disconnectPending && (
-                        <div className="mt-4 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
-                            Your shared world is paused. You can cancel disconnect within {formatDisconnectCountdown(couple?.disconnect_delete_after)} from Profile.
+                <section className="mt-8">
+                    {letters.length === 0 ? (
+                        <div className="rounded-[1.75rem] border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center shadow-[var(--shadow)]">
+                            <p className="text-lg font-semibold text-[var(--text)]">
+                                No letters yet
+                            </p>
+                            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+                                Start with one note for a future moment.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleNewLetter}
+                                disabled={disconnectPending}
+                                className="mt-6 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+                            >
+                                Write the first letter
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                            {letters.map((letter) => (
+                                <LetterCard
+                                    key={letter.id}
+                                    letter={letter}
+                                    disconnectPending={disconnectPending}
+                                    onOpen={handleOpen}
+                                    onEdit={handleStartEdit}
+                                    onDelete={handleDelete}
+                                />
+                            ))}
                         </div>
                     )}
+                </section>
+            </main>
+
+            <Modal
+                isOpen={showLetterModal}
+                onClose={resetLetterForm}
+                maxWidth="max-w-2xl"
+            >
+                <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                        {editingLetter ? "Edit letter" : "New letter"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">
+                        {editingLetter ? "Make this note feel right" : "Write something for later"}
+                    </h2>
 
                     <input
-                        placeholder="Title"
+                        placeholder="Letter title"
                         className={fieldClass}
                         value={form.title}
-                        onChange={(e) => setForm({ ...form, title: e.target.value })}
+                        onChange={(event) => setForm({ ...form, title: event.target.value })}
                     />
 
-                    <input
-                        placeholder="Open when... (optional)"
-                        className={fieldClass}
-                        value={form.condition}
-                        onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                    />
+                    <div className="mt-5">
+                        <p className="text-sm font-semibold text-[var(--text)]">
+                            Open when
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {CATEGORY_OPTIONS.map((condition) => (
+                                <button
+                                    key={condition}
+                                    type="button"
+                                    onClick={() => setForm({ ...form, condition })}
+                                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${form.condition === condition
+                                        ? "border-[var(--accent)] bg-[var(--surface-accent)] text-[var(--accent)]"
+                                        : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)]"
+                                        }`}
+                                >
+                                    {condition}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {form.condition === "Custom" && (
+                        <input
+                            placeholder="Custom open when..."
+                            className={fieldClass}
+                            value={form.customCondition}
+                            onChange={(event) => setForm({ ...form, customCondition: event.target.value })}
+                        />
+                    )}
 
                     <textarea
                         placeholder="Write your message..."
                         className={fieldClass}
-                        rows={4}
+                        rows={7}
                         value={form.message}
-                        onChange={(e) => setForm({ ...form, message: e.target.value })}
+                        onChange={(event) => setForm({ ...form, message: event.target.value })}
                     />
 
-                    <button
-                        onClick={editingLetter ? handleUpdate : handleCreate}
-                        disabled={disconnectPending}
-                        className="mt-4 w-full rounded-xl bg-[var(--accent)] py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {disconnectPending
-                            ? "Paused during disconnect"
-                            : editingLetter
-                                ? "Update Letter"
-                                : "Save Letter"}
-                    </button>
-                    {editingLetter && (
+                    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button
                             type="button"
-                            onClick={() => {
-                                setEditingLetter(null);
-                                setForm({ title: "", condition: "", message: "" });
-                            }}
-                            className="mt-3 w-full rounded-xl border border-[var(--border)] py-3 text-[var(--muted)] transition hover:text-[var(--text)]"
+                            onClick={resetLetterForm}
+                            className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)]"
                         >
-                            Cancel edit
+                            Cancel
                         </button>
-                    )}
-                </div>
-
-                {/* Letters List */}
-                <div className="mt-10 space-y-4">
-                    {letters.map((letter) => (
-                        <div
-                            key={letter.id}
-                            className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]"
+                        <button
+                            type="button"
+                            onClick={handleSaveLetter}
+                            disabled={disconnectPending}
+                            className="rounded-xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
                         >
-                            <h3 className="text-lg font-semibold text-[var(--text)]">
-                                {letter.title}
-                            </h3>
-
-                            <p className="mt-1 text-sm text-[var(--muted)]">
-                                Open when: {letter.open_condition || "Anytime"}
-                            </p>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => handleOpen(letter)}
-                                    className="rounded-lg bg-[var(--accent)] px-4 py-2 text-white"
-                                >
-                                    {letter.is_opened ? "Read Again" : "Open"}
-                                </button>
-                                <button
-                                    onClick={() => handleStartEdit(letter)}
-                                    disabled={disconnectPending}
-                                    className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--accent)] transition hover:bg-[var(--surface-accent)] disabled:opacity-60"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(letter)}
-                                    disabled={disconnectPending}
-                                    className="rounded-lg border border-[var(--danger-border)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-[var(--danger-soft)] disabled:opacity-60"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                            {editingLetter ? "Update Letter" : "Save Letter"}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </Modal>
 
             <Modal
                 isOpen={!!selectedLetter}
                 onClose={() => setSelectedLetter(null)}
                 maxWidth="max-w-2xl"
             >
-                <div>
+                <div className="rounded-[1.5rem] bg-[var(--surface-soft)] p-5">
                     <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
                         Open when {selectedLetter?.open_condition || "anytime"}
                     </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">
-                        {selectedLetter?.title}
-                    </h2>
-                    <p className="mt-5 whitespace-pre-wrap text-base leading-7 text-[var(--muted)]">
-                        {selectedLetter?.message}
-                    </p>
+                    <div className="mt-4 rounded-[1.25rem] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+                        <h2 className="text-2xl font-semibold text-[var(--text)]">
+                            {selectedLetter?.title}
+                        </h2>
+                        <p className="mt-5 whitespace-pre-wrap text-base leading-8 text-[var(--muted)]">
+                            {selectedLetter?.message}
+                        </p>
+                    </div>
                     <button
                         type="button"
                         onClick={() => setSelectedLetter(null)}
-                        className="mt-6 w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-white"
+                        className="mt-5 w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--accent-contrast)]"
                     >
                         Close
                     </button>
