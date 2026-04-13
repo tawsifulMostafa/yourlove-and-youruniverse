@@ -1,6 +1,9 @@
 -- Run this after supabase-security-setup.sql.
 -- Adds partner-to-partner custom dares.
 
+alter table public.couples
+  add column if not exists dare_done_count int not null default 0;
+
 create table if not exists public.couple_dares (
   id uuid primary key default gen_random_uuid(),
   couple_id uuid not null references public.couples(id) on delete cascade,
@@ -17,6 +20,19 @@ create table if not exists public.couple_dares (
   constraint couple_dares_no_self_dare_check check (sender_id <> receiver_id),
   constraint couple_dares_text_length_check check (char_length(trim(dare_text)) between 3 and 240)
 );
+
+update public.couples
+set dare_done_count = dare_done_count + existing_counts.done_count
+from (
+  select couple_id, count(*)::int as done_count
+  from public.couple_dares
+  where status = 'done'
+  group by couple_id
+) existing_counts
+where couples.id = existing_counts.couple_id;
+
+delete from public.couple_dares
+where status in ('declined', 'done');
 
 create index if not exists couple_dares_couple_created_at_idx
 on public.couple_dares (couple_id, created_at desc);
@@ -143,12 +159,16 @@ begin
     raise exception 'Your shared world is paused while disconnect is scheduled.';
   end if;
 
-  update public.couple_dares
-  set status = next_status,
-      updated_at = now(),
-      accepted_at = case when next_status = 'accepted' then now() else accepted_at end,
-      declined_at = case when next_status = 'declined' then now() else declined_at end
-  where id = target_dare.id;
+  if next_status = 'declined' then
+    delete from public.couple_dares
+    where id = target_dare.id;
+  else
+    update public.couple_dares
+    set status = 'accepted',
+        updated_at = now(),
+        accepted_at = now()
+    where id = target_dare.id;
+  end if;
 end;
 $$;
 
@@ -195,10 +215,11 @@ begin
     raise exception 'Your shared world is paused while disconnect is scheduled.';
   end if;
 
-  update public.couple_dares
-  set status = 'done',
-      updated_at = now(),
-      done_at = now()
+  update public.couples
+  set dare_done_count = dare_done_count + 1
+  where id = target_dare.couple_id;
+
+  delete from public.couple_dares
   where id = target_dare.id;
 end;
 $$;

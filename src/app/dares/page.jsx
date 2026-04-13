@@ -27,12 +27,12 @@ const statusCopy = {
   },
   declined: {
     label: "Declined",
-    description: "No pressure. This dare was skipped.",
+    description: "No pressure. This dare will disappear.",
     className: "bg-[var(--danger-soft)] text-[var(--danger)]",
   },
   done: {
     label: "Done",
-    description: "Completed and confirmed.",
+    description: "Completed dares are counted, then removed.",
     className: "bg-[#fff2d9] text-[#7b5b22]",
   },
 };
@@ -197,6 +197,7 @@ export default function DaresPage() {
       .from("couple_dares")
       .select("*")
       .eq("couple_id", profileData.couple_id)
+      .in("status", ["sent", "accepted"])
       .order("created_at", { ascending: false });
 
     if (daresError) {
@@ -217,6 +218,7 @@ export default function DaresPage() {
   const hasPartner = Boolean(partnerProfile);
   const partnerName = partnerProfile?.name || "Your partner";
   const canSendDare = Boolean(profile?.couple_id && hasPartner && !disconnectPending);
+  const completedDareCount = couple?.dare_done_count || 0;
 
   const handleSendDare = async (event) => {
     event.preventDefault();
@@ -343,7 +345,7 @@ export default function DaresPage() {
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/18 px-4 py-2 text-sm font-semibold text-white">
                 <Sparkles size={17} />
-                Custom only
+                {completedDareCount} done together
               </div>
             </div>
           </div>
@@ -410,7 +412,7 @@ export default function DaresPage() {
                   Dare {partnerName}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Write one small funny challenge. Keep it kind, safe, and playful.
+                  Write one small funny challenge. Done dares are counted, then the text disappears.
                 </p>
                 <textarea
                   value={dareText}
@@ -419,7 +421,7 @@ export default function DaresPage() {
                   maxLength={240}
                   rows={4}
                   className={fieldClass}
-                  placeholder="Example: Send me your cutest selfie face."
+                  placeholder="Example: Tell me one thing you like about me."
                 />
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs font-medium text-[var(--muted)]">
@@ -457,7 +459,7 @@ export default function DaresPage() {
                 No dares yet
               </p>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-                Send one small dare and see if your partner accepts the challenge.
+                Send one small dare and see if your partner accepts the challenge. Completed dares will only stay as a count.
               </p>
             </div>
           ) : (
