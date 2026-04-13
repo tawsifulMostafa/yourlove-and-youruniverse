@@ -18,16 +18,19 @@ function JourneyItem({ item }) {
   const Icon = isMemory ? ImageIcon : Mail;
 
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-accent)] text-[var(--accent)]">
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-[var(--text)]">{item.title}</p>
-        <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{item.description}</p>
-        <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-          {isMemory ? "Memory" : "Letter"} - {formatMemoryTime(item.created_at)}
-        </p>
+    <div className="relative min-w-72 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
+      <div className="absolute -left-2 top-6 h-4 w-4 rounded-full border-4 border-[var(--app-bg)] bg-[var(--accent)]" />
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-accent)] text-[var(--accent)]">
+          <Icon size={18} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--text)]">{item.title}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-[var(--muted)]">{item.description}</p>
+          <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
+            {isMemory ? "Memory" : "Letter"} - {formatMemoryTime(item.created_at)}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -43,9 +46,9 @@ export default function JourneyPreview({
   const hasRecentItems = recentItems.length > 0;
 
   return (
-    <section className="px-6 pt-10">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+    <section className="px-4 pt-10 sm:px-6">
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface-soft)] p-6">
           <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
             Partner corner
           </p>
@@ -106,7 +109,7 @@ export default function JourneyPreview({
           )}
         </div>
 
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+        <div className="overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--app-bg-soft)] p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
@@ -119,9 +122,12 @@ export default function JourneyPreview({
             <Sparkles className="text-[var(--accent)]" size={24} />
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="relative mt-6">
+            <div className="absolute left-0 right-0 top-8 hidden border-t border-dashed border-[var(--border)] sm:block" />
             {hasRecentItems ? (
-              recentItems.map((item) => <JourneyItem key={`${item.type}-${item.id}`} item={item} />)
+              <div className="flex gap-4 overflow-x-auto pb-3 pl-2">
+                {recentItems.map((item) => <JourneyItem key={`${item.type}-${item.id}`} item={item} />)}
+              </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-6 text-center">
                 <p className="text-sm font-semibold text-[var(--text)]">

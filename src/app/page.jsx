@@ -263,12 +263,8 @@ export default function HomePage() {
         isConnected={isConnected}
         userProfile={userProfile}
         partnerProfile={partnerProfile}
-      />
-      <ConnectionCard
-        isConnected={isConnected}
-        hasSharedSpace={hasSharedSpace}
         couple={couple}
-        partnerProfile={partnerProfile}
+        hasSharedSpace={hasSharedSpace}
         onCancelDisconnect={handleCancelDisconnect}
       />
       <FirstUseOnboarding

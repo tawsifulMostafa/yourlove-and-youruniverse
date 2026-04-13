@@ -50,28 +50,44 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
   };
 
   return (
-    <section className="px-6 pt-10">
-      <div className="eternal-surface mx-auto max-w-3xl rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+    <section className="px-4 pt-10 sm:px-6">
+      <div className="eternal-surface mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-accent)] text-[var(--accent)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent)]">
               <Heart size={24} />
             </div>
-
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
                 Love Level
               </p>
-              <h2 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--text)]">
+              <h2 className="mt-1 text-4xl font-semibold tracking-tight text-[var(--text)]">
                 Level {level}
               </h2>
-              <p className="mt-2 max-w-md text-sm text-[var(--muted)]">
+              <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
                 {message}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:w-56">
+          <div className="mt-7">
+            <div className="h-4 overflow-hidden rounded-full bg-[var(--surface-accent)]">
+              <div
+                className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
+                style={{ width: isConnected ? `${progress}%` : "0%" }}
+              />
+            </div>
+            <p className="mt-3 text-sm font-medium text-[var(--muted)]">
+              {progressMessage}
+            </p>
+            <p className="mt-1 text-sm text-[var(--accent)]">
+              {milestoneMessage}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+          <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-[var(--surface-soft)] p-4">
               <div className="flex items-center gap-2 text-[var(--accent)]">
                 <Mail size={17} />
@@ -98,48 +114,33 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
               <p className="mt-1 text-xs text-[var(--muted)]">saved</p>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6">
-          <div className="h-3 overflow-hidden rounded-full bg-[var(--surface-accent)]">
-            <div
-              className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
-              style={{ width: isConnected ? `${progress}%` : "0%" }}
-            />
+          <div className="eternal-reward-card mt-5 flex flex-col gap-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative z-10">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                Eternal reward
+              </p>
+              <p className="mt-2 text-lg font-semibold text-[var(--text)]">
+                {hasEternalMode ? "Eternal Mode unlocked" : `Eternal Mode unlocks at Level ${ETERNAL_MODE_UNLOCK_LEVEL}`}
+              </p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                {hasEternalMode
+                  ? "A deeper glow for your shared world."
+                  : "Keep sharing together to unlock this warmer night theme."}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleEternalModeClick}
+              className={`relative z-10 rounded-xl px-5 py-3 text-sm font-semibold transition ${hasEternalMode
+                ? "eternal-mode-button bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90"
+                : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)]"
+                }`}
+            >
+              {hasEternalMode ? (theme === "eternal" ? "Soft Mode" : "Eternal Mode") : "Unlocks at Level 10"}
+            </button>
           </div>
-          <p className="mt-3 text-sm font-medium text-[var(--muted)]">
-            {progressMessage}
-          </p>
-          <p className="mt-1 text-sm text-[var(--accent)]">
-            {milestoneMessage}
-          </p>
-        </div>
-
-        <div className="eternal-reward-card mt-5 flex flex-col gap-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative z-10">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-              Eternal reward
-            </p>
-            <p className="mt-2 text-lg font-semibold text-[var(--text)]">
-              {hasEternalMode ? "Eternal Mode unlocked" : `Eternal Mode unlocks at Level ${ETERNAL_MODE_UNLOCK_LEVEL}`}
-            </p>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {hasEternalMode
-                ? "A deeper glow for your shared world."
-                : "Keep sharing together to unlock this warmer night theme."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleEternalModeClick}
-            className={`relative z-10 rounded-xl px-5 py-3 text-sm font-semibold transition ${hasEternalMode
-              ? "eternal-mode-button bg-[var(--accent)] text-[var(--accent-contrast)] hover:opacity-90"
-              : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)]"
-              }`}
-          >
-            {hasEternalMode ? (theme === "eternal" ? "Soft Mode" : "Eternal Mode") : "Unlocks at Level 10"}
-          </button>
         </div>
       </div>
     </section>
