@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Heart, SmilePlus } from "lucide-react";
 
 const CHECKIN_OPTIONS = [
@@ -23,6 +24,86 @@ const CHECKIN_OPTIONS = [
     label: "Proud of you",
     partnerText: "is proud of you today.",
   },
+  {
+    mood: "good_morning_love",
+    label: "Good morning, love",
+    partnerText: "sent you a soft good morning.",
+  },
+  {
+    mood: "good_night_love",
+    label: "Good night, love",
+    partnerText: "sent you a quiet good night.",
+  },
+  {
+    mood: "drink_water",
+    label: "Drink water",
+    partnerText: "wants you to drink water today.",
+  },
+  {
+    mood: "eat_on_time",
+    label: "Eat on time",
+    partnerText: "wants you to eat on time.",
+  },
+  {
+    mood: "come_back_soon",
+    label: "Come back soon",
+    partnerText: "is waiting for you to come back soon.",
+  },
+  {
+    mood: "i_am_here",
+    label: "I am here",
+    partnerText: "wants you to know they are here.",
+  },
+  {
+    mood: "you_are_safe_with_me",
+    label: "You are safe with me",
+    partnerText: "wants you to feel safe with them.",
+  },
+  {
+    mood: "i_believe_in_you",
+    label: "I believe in you",
+    partnerText: "believes in you today.",
+  },
+  {
+    mood: "smile_for_me",
+    label: "Smile for me",
+    partnerText: "wants to see your smile today.",
+  },
+  {
+    mood: "take_rest",
+    label: "Take some rest",
+    partnerText: "wants you to rest a little.",
+  },
+  {
+    mood: "i_love_your_voice",
+    label: "I love your voice",
+    partnerText: "misses hearing your voice.",
+  },
+  {
+    mood: "cant_wait_to_talk",
+    label: "Can’t wait to talk",
+    partnerText: "can’t wait to talk to you.",
+  },
+  {
+    mood: "today_felt_empty",
+    label: "Today felt empty",
+    partnerText: "felt today was a little empty without you.",
+  },
+  {
+    mood: "sending_a_virtual_hug",
+    label: "Sending a virtual hug",
+    partnerText: "sent you a virtual hug.",
+  },
+  {
+    mood: "you_made_my_day",
+    label: "You made my day",
+    partnerText: "says you made their day.",
+  },
+  {
+    mood: "stay_close",
+    label: "Stay close",
+    partnerText: "wants you to stay close today.",
+  },
 ];
 
 export function getCheckInOption(mood) {
@@ -37,6 +118,16 @@ export default function DailyCheckIn({
   partnerProfile,
   onCheckIn,
 }) {
+  const [search, setSearch] = useState("");
+  const filteredOptions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return CHECKIN_OPTIONS;
+
+    return CHECKIN_OPTIONS.filter((option) =>
+      `${option.label} ${option.partnerText}`.toLowerCase().includes(query)
+    );
+  }, [search]);
+
   if (!isConnected) return null;
 
   const partnerOption = getCheckInOption(partnerCheckIn?.mood);
@@ -75,8 +166,21 @@ export default function DailyCheckIn({
           </div>
         )}
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {CHECKIN_OPTIONS.map((option) => {
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-[var(--text)]">
+            Choose one message
+          </p>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search message"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)] sm:max-w-64"
+          />
+        </div>
+
+        <div className="mt-4 grid max-h-80 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+          {filteredOptions.map((option) => {
             const isSelected = option.mood === userMood;
 
             return (
@@ -100,6 +204,11 @@ export default function DailyCheckIn({
             );
           })}
         </div>
+        {filteredOptions.length === 0 && (
+          <p className="mt-4 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)] p-4 text-center text-sm text-[var(--muted)]">
+            No preset message found.
+          </p>
+        )}
       </div>
     </section>
   );
