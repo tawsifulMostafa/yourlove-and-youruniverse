@@ -32,6 +32,18 @@ function cleanFileName(fileName) {
     return fileName.replace(/[^a-zA-Z0-9.-]/g, "-");
 }
 
+function DefaultProfilePhoto({ initials, large = false }) {
+    return (
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[var(--surface-soft)]">
+            <div className="absolute top-[18%] h-[30%] w-[30%] rounded-full bg-[var(--muted)]/45" />
+            <div className="absolute bottom-[-10%] h-[48%] w-[66%] rounded-t-full bg-[var(--muted)]/35" />
+            <span className={`relative z-10 mt-10 font-semibold text-[var(--accent)] ${large ? "text-2xl" : "text-sm"}`}>
+                {initials}
+            </span>
+        </div>
+    );
+}
+
 async function addAvatarSignedUrl(profile) {
     if (!profile?.avatar_path) return { ...profile, avatarUrl: "" };
 
@@ -404,20 +416,23 @@ export default function ProfilePage() {
             <main className="mx-auto max-w-4xl px-6 py-10 sm:py-12">
                 <div className="text-center">
                     <p className="text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">
-                        Your little corner
+                        Account
                     </p>
                     <h1 className="mt-3 text-4xl font-semibold tracking-tight text-[var(--text)]">
-                        My Profile
+                        {displayName}
                     </h1>
+                    <p className="mt-2 text-sm text-[var(--muted)]">
+                        This is the profile your partner will see.
+                    </p>
                 </div>
 
                 <section className="mx-auto mt-9 max-w-xl overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
                     <div className="bg-[var(--surface-accent)] px-6 pb-20 pt-8 text-center sm:px-8">
                         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                            Your little corner
+                            Your profile
                         </p>
                         <p className="mx-auto mt-3 max-w-sm text-sm text-[var(--muted)]">
-                            Keep your shared world feeling personal.
+                            Add a photo, name, and a small note for your shared world.
                         </p>
                     </div>
 
@@ -432,12 +447,7 @@ export default function ProfilePage() {
                                         aria-label="Profile photo preview"
                                     />
                                 ) : (
-                                    <div className="flex h-full w-full flex-col items-center justify-center bg-[var(--surface-accent)] text-[var(--accent)]">
-                                        <UserRound size={30} />
-                                        <span className="mt-1 text-xl font-semibold">
-                                            {initials}
-                                        </span>
-                                    </div>
+                                    <DefaultProfilePhoto initials={initials} large />
                                 )}
                             </div>
                             <button
@@ -462,13 +472,9 @@ export default function ProfilePage() {
                             <p className="mt-4 text-sm font-medium text-[var(--text)]">
                                 {displayName}
                             </p>
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="mt-2 text-sm font-medium text-[var(--accent)] transition hover:text-[var(--accent-hover)]"
-                            >
-                                Change photo
-                            </button>
+                            <p className="mt-1 max-w-xs truncate text-sm text-[var(--muted)]">
+                                {displayEmail}
+                            </p>
                             {selectedFile && (
                                 <p className="mt-2 text-xs font-medium text-[var(--accent)]">
                                     New photo selected. Save to keep it.
@@ -667,7 +673,7 @@ export default function ProfilePage() {
                                             aria-label="Profile preview photo"
                                         />
                                     ) : (
-                                        initials
+                                        <DefaultProfilePhoto initials={initials} />
                                     )}
                                 </div>
                                 <div className="min-w-0">
