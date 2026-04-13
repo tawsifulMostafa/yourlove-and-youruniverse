@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/home/HeroSection";
 import ConnectionCard from "@/components/home/ConnectionCard";
+import FirstUseOnboarding from "@/components/home/FirstUseOnboarding";
 import LoveLevelCard from "@/components/home/LoveLevelCard";
 import JourneyPreview from "@/components/home/JourneyPreview";
 import ActionCards from "@/components/home/ActionCards";
@@ -211,6 +212,13 @@ export default function HomePage() {
         couple={couple}
         partnerProfile={partnerProfile}
         onCancelDisconnect={handleCancelDisconnect}
+      />
+      <FirstUseOnboarding
+        isConnected={isConnected}
+        hasSharedSpace={hasSharedSpace}
+        inviteCode={couple?.invite_code}
+        hasProfilePhoto={Boolean(userProfile?.avatar_path)}
+        hasActivity={loveStats.letterCount + loveStats.memoryCount > 0}
       />
       <LoveLevelCard
         isConnected={isConnected}
