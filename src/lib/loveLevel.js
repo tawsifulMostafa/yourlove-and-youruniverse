@@ -8,6 +8,37 @@ const LEVEL_THRESHOLDS = {
 
 export const ETERNAL_MODE_UNLOCK_LEVEL = 10;
 
+const LOVE_LEVEL_TIERS = [
+  {
+    key: "first-spark",
+    name: "First Spark",
+    minLevel: 1,
+    maxLevel: 3,
+    rewardCopy: "Keep sharing together to unlock this warmer night theme.",
+  },
+  {
+    key: "growing-bond",
+    name: "Growing Bond",
+    minLevel: 4,
+    maxLevel: 6,
+    rewardCopy: "Your shared world is starting to feel more personal.",
+  },
+  {
+    key: "deeply-connected",
+    name: "Deeply Connected",
+    minLevel: 7,
+    maxLevel: 9,
+    rewardCopy: "You are close to unlocking the deeper Eternal glow.",
+  },
+  {
+    key: "eternal-bond",
+    name: "Eternal Bond",
+    minLevel: 10,
+    maxLevel: Infinity,
+    rewardCopy: "A deeper glow for your shared world.",
+  },
+];
+
 function getNextLevelRequirement(level) {
   return LEVEL_THRESHOLDS[level + 1] ?? 30 * level * level + 20;
 }
@@ -39,4 +70,10 @@ export function getLoveLevel(letterCount, memoryCount) {
 
 export function isEternalModeUnlocked(letterCount, memoryCount) {
   return getLoveLevel(letterCount, memoryCount).level >= ETERNAL_MODE_UNLOCK_LEVEL;
+}
+
+export function getLoveLevelTier(level) {
+  return LOVE_LEVEL_TIERS.find(
+    (tier) => level >= tier.minLevel && level <= tier.maxLevel
+  ) ?? LOVE_LEVEL_TIERS[0];
 }

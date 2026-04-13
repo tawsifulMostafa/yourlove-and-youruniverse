@@ -2,9 +2,40 @@
 
 import { useSyncExternalStore } from "react";
 import { Heart, Image as ImageIcon, Mail } from "lucide-react";
-import { ETERNAL_MODE_UNLOCK_LEVEL, getLoveLevel } from "@/lib/loveLevel";
+import { ETERNAL_MODE_UNLOCK_LEVEL, getLoveLevel, getLoveLevelTier } from "@/lib/loveLevel";
 import { getSavedTheme, setSavedTheme, THEME_CHANGE_EVENT } from "@/lib/theme";
 import toast from "react-hot-toast";
+
+const TIER_STYLES = {
+  "first-spark": {
+    icon: "bg-[#f3e7e9] text-[#9d5c63]",
+    shell: "bg-[var(--surface)]",
+    glow: "0 18px 42px rgba(157, 92, 99, 0.08)",
+    progress: "linear-gradient(90deg, #d98a92, #9d5c63)",
+    accent: "First notes, first glow.",
+  },
+  "growing-bond": {
+    icon: "bg-[#f7dfd0] text-[#b86f5d]",
+    shell: "bg-[linear-gradient(135deg,var(--surface)_0%,rgba(248,223,208,0.55)_100%)]",
+    glow: "0 20px 48px rgba(184, 111, 93, 0.16)",
+    progress: "linear-gradient(90deg, #d98a92, #d79f72)",
+    accent: "The bond is getting warmer.",
+  },
+  "deeply-connected": {
+    icon: "bg-[#efe3f0] text-[#8b5a8c]",
+    shell: "bg-[linear-gradient(135deg,var(--surface)_0%,rgba(239,227,240,0.7)_100%)]",
+    glow: "0 22px 54px rgba(139, 90, 140, 0.18)",
+    progress: "linear-gradient(90deg, #9d5c63, #8b5a8c)",
+    accent: "Almost at the Eternal glow.",
+  },
+  "eternal-bond": {
+    icon: "bg-[#fff2d9] text-[#bfa071]",
+    shell: "bg-[linear-gradient(135deg,var(--surface)_0%,rgba(191,160,113,0.18)_55%,rgba(225,142,231,0.14)_100%)]",
+    glow: "0 0 38px rgba(225, 142, 231, 0.18), 0 24px 60px rgba(191, 160, 113, 0.18)",
+    progress: "linear-gradient(90deg, #bfa071, #e7b0a2, #e18ee7)",
+    accent: "Eternal Mode is part of your story now.",
+  },
+};
 
 function subscribeToThemeChange(callback) {
   window.addEventListener(THEME_CHANGE_EVENT, callback);
@@ -17,6 +48,8 @@ function subscribeToThemeChange(callback) {
 export default function LoveLevelCard({ isConnected, letterCount, memoryCount }) {
   const hasActivity = letterCount + memoryCount > 0;
   const { level, progress } = getLoveLevel(letterCount, memoryCount);
+  const tier = getLoveLevelTier(level);
+  const tierStyle = TIER_STYLES[tier.key] ?? TIER_STYLES["first-spark"];
   const hasEternalMode = level >= ETERNAL_MODE_UNLOCK_LEVEL;
   const theme = useSyncExternalStore(subscribeToThemeChange, getSavedTheme, () => "light");
 
@@ -52,20 +85,31 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
   return (
     <section className="px-4 pt-10 sm:px-6">
       <div className="eternal-surface mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+        <div
+          className={`rounded-[1.75rem] border border-[var(--border)] p-6 shadow-[var(--shadow)] ${tierStyle.shell}`}
+          style={{ boxShadow: tierStyle.glow }}
+        >
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--surface-accent)] text-[var(--accent)]">
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${tierStyle.icon}`}>
               <Heart size={24} />
             </div>
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
                 Love Level
               </p>
-              <h2 className="mt-1 text-4xl font-semibold tracking-tight text-[var(--text)]">
-                Level {level}
-              </h2>
+              <div className="mt-1 flex flex-wrap items-end gap-3">
+                <h2 className="text-4xl font-semibold tracking-tight text-[var(--text)]">
+                  Level {level}
+                </h2>
+                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                  {tier.name}
+                </span>
+              </div>
               <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
                 {message}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-[var(--accent)]">
+                {tierStyle.accent}
               </p>
             </div>
           </div>
@@ -73,8 +117,8 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
           <div className="mt-7">
             <div className="h-4 overflow-hidden rounded-full bg-[var(--surface-accent)]">
               <div
-                className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
-                style={{ width: isConnected ? `${progress}%` : "0%" }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{ background: tierStyle.progress, width: isConnected ? `${progress}%` : "0%" }}
               />
             </div>
             <p className="mt-3 text-sm font-medium text-[var(--muted)]">
@@ -124,9 +168,7 @@ export default function LoveLevelCard({ isConnected, letterCount, memoryCount })
                 {hasEternalMode ? "Eternal Mode unlocked" : `Eternal Mode unlocks at Level ${ETERNAL_MODE_UNLOCK_LEVEL}`}
               </p>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                {hasEternalMode
-                  ? "A deeper glow for your shared world."
-                  : "Keep sharing together to unlock this warmer night theme."}
+                {tier.rewardCopy}
               </p>
             </div>
 
