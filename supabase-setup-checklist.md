@@ -53,6 +53,10 @@ Run in this order:
   - `couple_checkins` table
   - one check-in per user per couple per day
   - RLS policies for same-couple read and own check-in write
+5. `supabase-dares-setup.sql`
+  - `couple_dares` table
+  - same-couple read policy
+  - RPCs for sending, accepting/declining, and confirming partner dares
 
 If a policy already exists error appears, run the newest SQL file again; these files use `drop policy if exists` for the app-owned policy names.
 
@@ -98,4 +102,7 @@ If a policy already exists error appears, run the newest SQL file again; these f
 - Pending disconnect blocks new letters and memories.
 - Connected users can send one daily check-in and update it the same day.
 - Partner can see today's check-in on Home.
+- Connected users can send custom dares.
+- Dare receiver can accept or decline.
+- Dare sender can confirm accepted dares as done.
 - Eternal Mode stays locked below Love Level 10 and unlocks at Level 10.
