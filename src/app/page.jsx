@@ -6,6 +6,7 @@ import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/home/HeroSection";
 import ConnectionCard from "@/components/home/ConnectionCard";
 import FirstUseOnboarding from "@/components/home/FirstUseOnboarding";
+import DailyCheckIn from "@/components/home/DailyCheckIn";
 import LoveLevelCard from "@/components/home/LoveLevelCard";
 import JourneyPreview from "@/components/home/JourneyPreview";
 import ActionCards from "@/components/home/ActionCards";
@@ -13,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { hasEmailLoginPassword } from "@/lib/auth";
 import toast from "react-hot-toast";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { isDisconnectPending } from "@/lib/disconnect";
 
 async function addAvatarSignedUrl(profile) {
   if (!profile?.avatar_path) return { ...profile, avatarUrl: "" };
@@ -40,6 +42,10 @@ export default function HomePage() {
     memoryCount: 0,
   });
   const [recentItems, setRecentItems] = useState([]);
+  const [checkIns, setCheckIns] = useState({
+    mine: null,
+    partner: null,
+  });
   const router = useRouter();
 
   const getData = useCallback(async () => {
@@ -76,6 +82,7 @@ export default function HomePage() {
       setHasSharedSpace(false);
       setLoveStats({ letterCount: 0, memoryCount: 0 });
       setRecentItems([]);
+      setCheckIns({ mine: null, partner: null });
       return;
     }
 
@@ -90,6 +97,7 @@ export default function HomePage() {
       setHasSharedSpace(false);
       setLoveStats({ letterCount: 0, memoryCount: 0 });
       setRecentItems([]);
+      setCheckIns({ mine: null, partner: null });
       return;
     }
 
@@ -173,12 +181,30 @@ export default function HomePage() {
       if (partnerError) console.error(partnerError);
       setPartnerProfile(null);
       setIsConnected(false);
+      setCheckIns({ mine: null, partner: null });
       return;
     }
 
     const nextPartnerProfile = await addAvatarSignedUrl(partner);
     setPartnerProfile(nextPartnerProfile);
     setIsConnected(true);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: checkInData, error: checkInError } = await supabase
+      .from("couple_checkins")
+      .select("id, user_id, mood, checkin_date, created_at, updated_at")
+      .eq("couple_id", profile.couple_id)
+      .eq("checkin_date", today);
+
+    if (checkInError) {
+      console.error("Check-in load error:", checkInError.message);
+      setCheckIns({ mine: null, partner: null });
+    } else {
+      setCheckIns({
+        mine: (checkInData || []).find((item) => item.user_id === user.id) || null,
+        partner: (checkInData || []).find((item) => item.user_id === partner.id) || null,
+      });
+    }
   }, [router]);
 
   useEffect(() => {
@@ -195,6 +221,38 @@ export default function HomePage() {
     }
 
     toast.success("Disconnect canceled");
+    await getData();
+  };
+
+  const handleCheckIn = async (mood) => {
+    if (!userProfile?.couple_id) return;
+
+    if (isDisconnectPending(couple)) {
+      toast.error("Your shared world is paused while disconnect is scheduled.");
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = {
+      couple_id: userProfile.couple_id,
+      user_id: userProfile.id,
+      mood,
+      checkin_date: today,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from("couple_checkins")
+      .upsert(payload, {
+        onConflict: "couple_id,user_id,checkin_date",
+      });
+
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error));
+      return;
+    }
+
+    toast.success("Check-in sent");
     await getData();
   };
 
@@ -219,6 +277,14 @@ export default function HomePage() {
         inviteCode={couple?.invite_code}
         hasProfilePhoto={Boolean(userProfile?.avatar_path)}
         hasActivity={loveStats.letterCount + loveStats.memoryCount > 0}
+      />
+      <DailyCheckIn
+        isConnected={isConnected}
+        disabled={isDisconnectPending(couple)}
+        userCheckIn={checkIns.mine}
+        partnerCheckIn={checkIns.partner}
+        partnerProfile={partnerProfile}
+        onCheckIn={handleCheckIn}
       />
       <LoveLevelCard
         isConnected={isConnected}

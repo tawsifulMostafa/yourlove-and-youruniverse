@@ -49,6 +49,10 @@ Run in this order:
   - RLS policies for `profiles`, `couples`, `letters`, `memories`
   - storage policies for `avatars` and `memories`
   - helper functions used by policies
+4. `supabase-checkins-setup.sql`
+  - `couple_checkins` table
+  - one check-in per user per couple per day
+  - RLS policies for same-couple read and own check-in write
 
 If a policy already exists error appears, run the newest SQL file again; these files use `drop policy if exists` for the app-owned policy names.
 
@@ -92,4 +96,6 @@ If a policy already exists error appears, run the newest SQL file again; these f
 - One-person invite space shows waiting state and can be reset.
 - Two-person couple uses the 24-hour disconnect flow instead of reset.
 - Pending disconnect blocks new letters and memories.
+- Connected users can send one daily check-in and update it the same day.
+- Partner can see today's check-in on Home.
 - Eternal Mode stays locked below Love Level 10 and unlocks at Level 10.
