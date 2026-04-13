@@ -261,18 +261,19 @@ export default function ProfilePage() {
                 avatarPath = filePath;
             }
 
-            const { error: profileError } = await supabase.from("profiles").upsert({
-                id: user.id,
+            const { error: profileError } = await supabase
+                .from("profiles")
+                .update({
                 email: form.email || user.email,
                 name: trimmedName,
                 about: form.about,
                 avatar_path: avatarPath,
-                couple_id: profile?.couple_id || null,
                 updated_at: new Date().toISOString(),
-            });
+                })
+                .eq("id", user.id);
 
             if (profileError) {
-                toast.error(profileError.message);
+                toast.error(getFriendlyErrorMessage(profileError));
                 setSaving(false);
                 return;
             }
