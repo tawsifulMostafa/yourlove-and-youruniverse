@@ -35,8 +35,8 @@ export default function DailyCheckIn({
   const userMood = userCheckIn?.mood;
 
   return (
-    <section className="px-4 pt-2 sm:px-6">
-      <div className="mx-auto max-w-6xl rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] sm:p-5">
+    <section className="px-4 pt-4 sm:px-6">
+      <div className="mx-auto max-w-6xl rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-accent)] text-[var(--accent)]">
             <SmilePlus size={24} />
@@ -47,12 +47,9 @@ export default function DailyCheckIn({
                 <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
                   Daily check-in
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text)]">
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--text)]">
                   Send one small signal
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Pick a preset message and let your partner feel you today.
-                </p>
               </div>
               <div className="relative w-full lg:max-w-80">
                 <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={16} />
@@ -66,7 +63,7 @@ export default function DailyCheckIn({
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
               {partnerPreset && (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
                   <div className="flex items-start gap-3">
@@ -113,7 +110,7 @@ export default function DailyCheckIn({
               </div>
             )}
 
-            <div className="mt-4 flex max-h-52 gap-3 overflow-x-auto pb-2">
+            <div className="mt-4 flex max-h-44 gap-3 overflow-x-auto pb-2">
               {filteredOptions.map((preset) => {
                 const isSelected = preset.mood === userMood;
 
@@ -123,7 +120,7 @@ export default function DailyCheckIn({
                     type="button"
                     onClick={() => onCheckIn(preset.mood)}
                     disabled={disabled}
-                    className={`min-h-28 w-64 shrink-0 rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${isSelected
+                    className={`min-h-24 w-60 shrink-0 rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${isSelected
                       ? "border-[var(--accent)] bg-[var(--surface-accent)] text-[var(--accent)]"
                       : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--text)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                       }`}

@@ -3,30 +3,30 @@ import { Camera, Flame, Gamepad2, Mail } from "lucide-react";
 
 const actions = [
   {
-    title: "Write Letter",
+    title: "Letter",
     href: "/letters",
-    caption: "Open when notes",
+    caption: "Write",
     icon: Mail,
     className: "bg-[#ffd9cf] text-[#6d3c43]",
   },
   {
-    title: "Add Memory",
+    title: "Memory",
     href: "/memories",
-    caption: "Save a moment",
+    caption: "Save",
     icon: Camera,
     className: "bg-[#cfe9ff] text-[#24445f]",
   },
   {
-    title: "Send Dare",
+    title: "Dare",
     href: "/dares",
-    caption: "Make it playful",
+    caption: "Send",
     icon: Flame,
     className: "bg-[#eed3ff] text-[#553363]",
   },
   {
-    title: "Play Quiz",
+    title: "Play",
     href: "/play",
-    caption: "Battle together",
+    caption: "Battle",
     icon: Gamepad2,
     className: "bg-[#d8f2d2] text-[#365b32]",
   },
@@ -34,20 +34,17 @@ const actions = [
 
 export default function ActionCards() {
   return (
-    <section className="px-4 py-16 sm:px-6">
+    <section className="px-4 pt-6 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--accent)]">
               Quick actions
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text)]">
-              Small things, easy to send
-            </h2>
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {actions.map((item) => {
             const Icon = item.icon;
 
@@ -55,11 +52,13 @@ export default function ActionCards() {
               <Link
                 key={item.title}
                 href={item.href}
-                className={`min-h-32 rounded-[1.5rem] p-5 shadow-[var(--shadow)] transition duration-200 hover:-translate-y-1 ${item.className}`}
+                className={`flex min-h-24 items-center gap-3 rounded-[1.25rem] p-4 shadow-[var(--shadow)] transition duration-200 hover:-translate-y-1 ${item.className}`}
               >
-                <Icon size={25} />
-                <p className="mt-6 text-lg font-semibold leading-tight">{item.title}</p>
-                <p className="mt-1 text-sm opacity-75">{item.caption}</p>
+                <Icon size={22} />
+                <div>
+                  <p className="text-base font-semibold leading-tight">{item.title}</p>
+                  <p className="mt-1 text-xs font-medium opacity-75">{item.caption}</p>
+                </div>
               </Link>
             );
           })}

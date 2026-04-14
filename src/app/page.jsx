@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/home/HeroSection";
-import FirstUseOnboarding from "@/components/home/FirstUseOnboarding";
 import DailyCheckIn from "@/components/home/DailyCheckIn";
 import LoveLevelCard from "@/components/home/LoveLevelCard";
 import JourneyPreview from "@/components/home/JourneyPreview";
@@ -318,13 +317,6 @@ export default function HomePage() {
             hasSharedSpace={hasSharedSpace}
             onCancelDisconnect={handleCancelDisconnect}
           />
-          <FirstUseOnboarding
-            isConnected={isConnected}
-            hasSharedSpace={hasSharedSpace}
-            inviteCode={couple?.invite_code}
-            hasProfilePhoto={Boolean(userProfile?.avatar_path)}
-            hasActivity={loveStats.letterCount + loveStats.memoryCount > 0}
-          />
           <DailyCheckIn
             isConnected={isConnected}
             disabled={isDisconnectPending(couple)}
@@ -340,10 +332,7 @@ export default function HomePage() {
           />
           <JourneyPreview
             isConnected={isConnected}
-            hasSharedSpace={hasSharedSpace}
-            partnerProfile={partnerProfile}
             recentItems={recentItems}
-            inviteCode={couple?.invite_code}
           />
           <ActionCards />
         </>
