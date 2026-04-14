@@ -5,6 +5,7 @@ import { AlertTriangle, Camera, Clock, Heart, Trash2, UserRound } from "lucide-r
 import Link from "next/link";
 import Navbar from "@/components/shared/Navbar";
 import Modal from "@/components/shared/Modal";
+import PageSkeleton from "@/components/shared/PageSkeleton";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -403,11 +404,7 @@ export default function ProfilePage() {
     const disconnectCountdown = formatDisconnectCountdown(couple?.disconnect_delete_after);
 
     if (loading) {
-        return (
-            <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg-soft)] px-4">
-                <p className="text-sm font-medium text-[var(--muted)]">Loading...</p>
-            </main>
-        );
+        return <PageSkeleton />;
     }
 
     return (

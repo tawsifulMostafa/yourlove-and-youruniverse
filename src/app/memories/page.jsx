@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
+import PageSkeleton from "@/components/shared/PageSkeleton";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { formatMemoryTime } from "@/lib/utils";
@@ -21,6 +22,7 @@ export default function MemoriesPage() {
     const [couple, setCouple] = useState(null);
     const [memories, setMemories] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingMemory, setEditingMemory] = useState(null);
@@ -36,6 +38,8 @@ export default function MemoriesPage() {
     const [file, setFile] = useState(null);
 
     const loadData = useCallback(async () => {
+        setPageLoading(true);
+
         const {
             data: { user },
             error: userError,
@@ -62,6 +66,7 @@ export default function MemoriesPage() {
         if (profileError || !profileData) {
             console.error(profileError);
             toast.error("Profile load failed");
+            setPageLoading(false);
             return;
         }
 
@@ -70,30 +75,31 @@ export default function MemoriesPage() {
 
         if (!profileData.couple_id) {
             setMemories([]);
+            setPageLoading(false);
             return;
         }
 
-        const { data: coupleData, error: coupleError } = await supabase
-            .from("couples")
-            .select("*")
-            .eq("id", profileData.couple_id)
-            .maybeSingle();
+        const [{ data: coupleData, error: coupleError }, { data: memoriesData, error: memoriesError }] =
+            await Promise.all([
+                supabase
+                    .from("couples")
+                    .select("*")
+                    .eq("id", profileData.couple_id)
+                    .maybeSingle(),
+                supabase
+                    .from("memories")
+                    .select("*")
+                    .eq("couple_id", profileData.couple_id)
+                    .order("created_at", { ascending: false }),
+            ]);
 
-        if (coupleError) {
-            console.error("Couple load error:", coupleError.message);
-        } else {
-            setCouple(coupleData);
-        }
-
-        const { data: memoriesData, error: memoriesError } = await supabase
-            .from("memories")
-            .select("*")
-            .eq("couple_id", profileData.couple_id)
-            .order("created_at", { ascending: false });
+        if (coupleError) console.error("Couple load error:", coupleError.message);
+        else setCouple(coupleData);
 
         if (memoriesError) {
             console.error(memoriesError);
             toast.error("Failed to load memories");
+            setPageLoading(false);
             return;
         }
 
@@ -120,6 +126,7 @@ export default function MemoriesPage() {
         );
 
         setMemories(memoriesWithSignedUrls);
+        setPageLoading(false);
     }, [router]);
 
     useEffect(() => {
@@ -305,6 +312,10 @@ export default function MemoriesPage() {
     };
 
     const disconnectPending = isDisconnectPending(couple);
+
+    if (pageLoading) {
+        return <PageSkeleton variant="cards" />;
+    }
 
     const handleOpenAddMemory = () => {
         if (disconnectPending) {

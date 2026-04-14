@@ -7,6 +7,7 @@ import { formatDisconnectCountdown, isDisconnectPending } from "@/lib/disconnect
 import toast from "react-hot-toast";
 import { hasEmailLoginPassword } from "@/lib/auth";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import PageSkeleton from "@/components/shared/PageSkeleton";
 
 export default function ConnectPage() {
   const router = useRouter();
@@ -16,8 +17,11 @@ export default function ConnectPage() {
   const [memberCount, setMemberCount] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const loadConnection = async () => {
+      setPageLoading(true);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -60,6 +64,8 @@ export default function ConnectPage() {
 
         setMemberCount(count || 0);
       }
+
+      setPageLoading(false);
     };
 
   useEffect(() => {
@@ -148,6 +154,10 @@ export default function ConnectPage() {
   };
 
   const hasPartner = memberCount > 1;
+
+  if (pageLoading) {
+    return <PageSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] px-4 py-10">

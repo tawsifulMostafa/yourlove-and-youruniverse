@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Edit3, Mail, Plus, Trash2 } from "lucide-react";
 import Navbar from "@/components/shared/Navbar";
 import Modal from "@/components/shared/Modal";
+import PageSkeleton from "@/components/shared/PageSkeleton";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { formatDisconnectCountdown, isDisconnectPending } from "@/lib/disconnect";
@@ -115,10 +116,13 @@ export default function LettersPage() {
     const [selectedLetter, setSelectedLetter] = useState(null);
     const [editingLetter, setEditingLetter] = useState(null);
     const [showLetterModal, setShowLetterModal] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
 
     const [form, setForm] = useState(emptyForm);
 
     const loadData = useCallback(async () => {
+        setPageLoading(true);
+
         const {
             data: { user },
         } = await supabase.auth.getUser();
@@ -145,27 +149,30 @@ export default function LettersPage() {
         setCouple(null);
         setLetters([]);
 
-        if (!profileData?.couple_id) return;
-
-        const { data: coupleData, error: coupleError } = await supabase
-            .from("couples")
-            .select("*")
-            .eq("id", profileData.couple_id)
-            .maybeSingle();
-
-        if (coupleError) {
-            console.error("Couple load error:", coupleError.message);
-        } else {
-            setCouple(coupleData);
+        if (!profileData?.couple_id) {
+            setPageLoading(false);
+            return;
         }
 
-        const { data: lettersData } = await supabase
-            .from("letters")
-            .select("*")
-            .eq("couple_id", profileData.couple_id)
-            .order("created_at", { ascending: false });
+        const [{ data: coupleData, error: coupleError }, { data: lettersData }] =
+            await Promise.all([
+                supabase
+                    .from("couples")
+                    .select("*")
+                    .eq("id", profileData.couple_id)
+                    .maybeSingle(),
+                supabase
+                    .from("letters")
+                    .select("*")
+                    .eq("couple_id", profileData.couple_id)
+                    .order("created_at", { ascending: false }),
+            ]);
+
+        if (coupleError) console.error("Couple load error:", coupleError.message);
+        else setCouple(coupleData);
 
         setLetters(lettersData || []);
+        setPageLoading(false);
     }, [router]);
 
     useEffect(() => {
@@ -174,6 +181,10 @@ export default function LettersPage() {
     }, [loadData]);
 
     const disconnectPending = isDisconnectPending(couple);
+
+    if (pageLoading) {
+        return <PageSkeleton />;
+    }
 
     const resetLetterForm = () => {
         setForm(emptyForm);

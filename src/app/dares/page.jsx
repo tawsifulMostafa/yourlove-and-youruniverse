@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, Clock, Send, ShieldAlert, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
+import PageSkeleton from "@/components/shared/PageSkeleton";
 import { hasEmailLoginPassword } from "@/lib/auth";
 import { formatDisconnectCountdown, isDisconnectPending } from "@/lib/disconnect";
 import { getFriendlyErrorMessage } from "@/lib/errors";
@@ -317,11 +318,7 @@ export default function DaresPage() {
   };
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg-soft)] px-4">
-        <p className="text-sm font-medium text-[var(--muted)]">Loading...</p>
-      </main>
-    );
+    return <PageSkeleton variant="cards" />;
   }
 
   return (
