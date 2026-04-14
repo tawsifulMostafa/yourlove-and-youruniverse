@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
 import HeroSection from "@/components/home/HeroSection";
-import ConnectionCard from "@/components/home/ConnectionCard";
 import FirstUseOnboarding from "@/components/home/FirstUseOnboarding";
 import DailyCheckIn from "@/components/home/DailyCheckIn";
 import LoveLevelCard from "@/components/home/LoveLevelCard";
@@ -31,7 +30,34 @@ async function addAvatarSignedUrl(profile) {
   return { ...profile, avatarUrl: data.signedUrl };
 }
 
+function HomeSkeleton() {
+  return (
+    <>
+      <section className="px-4 pb-10 pt-6 sm:px-6">
+        <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+          <div className="min-h-[26rem] animate-pulse bg-[linear-gradient(135deg,var(--surface-accent)_0%,var(--surface-soft)_100%)] p-6 sm:p-8">
+            <div className="h-4 w-28 rounded-full bg-[var(--surface)]/70" />
+            <div className="mt-8 h-12 max-w-xl rounded-2xl bg-[var(--surface)]/70" />
+            <div className="mt-4 h-5 max-w-lg rounded-full bg-[var(--surface)]/70" />
+            <div className="mt-8 flex gap-3">
+              <div className="h-12 w-32 rounded-xl bg-[var(--surface)]/70" />
+              <div className="h-12 w-32 rounded-xl bg-[var(--surface)]/40" />
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="px-4 pt-2 sm:px-6">
+        <div className="mx-auto h-32 max-w-6xl animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]" />
+      </section>
+      <section className="px-4 pt-10 sm:px-6">
+        <div className="mx-auto h-64 max-w-6xl animate-pulse rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]" />
+      </section>
+    </>
+  );
+}
+
 export default function HomePage() {
+  const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState(null);
@@ -49,6 +75,8 @@ export default function HomePage() {
   const router = useRouter();
 
   const getData = useCallback(async () => {
+    setLoading(true);
+
     const { data } = await supabase.auth.getUser();
     const user = data?.user;
 
@@ -83,6 +111,7 @@ export default function HomePage() {
       setLoveStats({ letterCount: 0, memoryCount: 0 });
       setRecentItems([]);
       setCheckIns({ mine: null, partner: null });
+      setLoading(false);
       return;
     }
 
@@ -98,28 +127,23 @@ export default function HomePage() {
       setLoveStats({ letterCount: 0, memoryCount: 0 });
       setRecentItems([]);
       setCheckIns({ mine: null, partner: null });
+      setLoading(false);
       return;
     }
 
-    const { data: coupleData, error: coupleError } = await supabase
-      .from("couples")
-      .select("*")
-      .eq("id", profile.couple_id)
-      .maybeSingle();
-
-    if (coupleError) {
-      console.error("Couple load error:", coupleError.message);
-      setCouple(null);
-    } else {
-      setCouple(coupleData);
-    }
-
     const [
+      { data: coupleData, error: coupleError },
       { count: letterCount },
       { count: memoryCount },
       { data: recentLetters },
       { data: recentMemories },
+      { data: partner, error: partnerError },
     ] = await Promise.all([
+      supabase
+        .from("couples")
+        .select("*")
+        .eq("id", profile.couple_id)
+        .maybeSingle(),
       supabase
         .from("letters")
         .select("id", { count: "exact", head: true })
@@ -140,7 +164,20 @@ export default function HomePage() {
         .eq("couple_id", profile.couple_id)
         .order("created_at", { ascending: false })
         .limit(3),
+      supabase
+        .from("profiles")
+        .select("id, name, email, about, avatar_path, couple_id")
+        .eq("couple_id", profile.couple_id)
+        .neq("id", user.id)
+        .maybeSingle(),
     ]);
+
+    if (coupleError) {
+      console.error("Couple load error:", coupleError.message);
+      setCouple(null);
+    } else {
+      setCouple(coupleData);
+    }
 
     setLoveStats({
       letterCount: letterCount || 0,
@@ -170,18 +207,12 @@ export default function HomePage() {
 
     setRecentItems(nextRecentItems);
 
-    const { data: partner, error: partnerError } = await supabase
-      .from("profiles")
-      .select("id, name, email, about, avatar_path, couple_id")
-      .eq("couple_id", profile.couple_id)
-      .neq("id", user.id)
-      .maybeSingle();
-
     if (partnerError || !partner) {
       if (partnerError) console.error(partnerError);
       setPartnerProfile(null);
       setIsConnected(false);
       setCheckIns({ mine: null, partner: null });
+      setLoading(false);
       return;
     }
 
@@ -205,6 +236,8 @@ export default function HomePage() {
         partner: (checkInData || []).find((item) => item.user_id === partner.id) || null,
       });
     }
+
+    setLoading(false);
   }, [router]);
 
   useEffect(() => {
@@ -259,42 +292,48 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-[var(--app-bg)]">
       <Navbar showLogout={true} />
-      <HeroSection
-        isConnected={isConnected}
-        userProfile={userProfile}
-        partnerProfile={partnerProfile}
-        couple={couple}
-        hasSharedSpace={hasSharedSpace}
-        onCancelDisconnect={handleCancelDisconnect}
-      />
-      <FirstUseOnboarding
-        isConnected={isConnected}
-        hasSharedSpace={hasSharedSpace}
-        inviteCode={couple?.invite_code}
-        hasProfilePhoto={Boolean(userProfile?.avatar_path)}
-        hasActivity={loveStats.letterCount + loveStats.memoryCount > 0}
-      />
-      <DailyCheckIn
-        isConnected={isConnected}
-        disabled={isDisconnectPending(couple)}
-        userCheckIn={checkIns.mine}
-        partnerCheckIn={checkIns.partner}
-        partnerProfile={partnerProfile}
-        onCheckIn={handleCheckIn}
-      />
-      <LoveLevelCard
-        isConnected={isConnected}
-        letterCount={loveStats.letterCount}
-        memoryCount={loveStats.memoryCount}
-      />
-      <JourneyPreview
-        isConnected={isConnected}
-        hasSharedSpace={hasSharedSpace}
-        partnerProfile={partnerProfile}
-        recentItems={recentItems}
-        inviteCode={couple?.invite_code}
-      />
-      <ActionCards />
+      {loading ? (
+        <HomeSkeleton />
+      ) : (
+        <>
+          <HeroSection
+            isConnected={isConnected}
+            userProfile={userProfile}
+            partnerProfile={partnerProfile}
+            couple={couple}
+            hasSharedSpace={hasSharedSpace}
+            onCancelDisconnect={handleCancelDisconnect}
+          />
+          <FirstUseOnboarding
+            isConnected={isConnected}
+            hasSharedSpace={hasSharedSpace}
+            inviteCode={couple?.invite_code}
+            hasProfilePhoto={Boolean(userProfile?.avatar_path)}
+            hasActivity={loveStats.letterCount + loveStats.memoryCount > 0}
+          />
+          <DailyCheckIn
+            isConnected={isConnected}
+            disabled={isDisconnectPending(couple)}
+            userCheckIn={checkIns.mine}
+            partnerCheckIn={checkIns.partner}
+            partnerProfile={partnerProfile}
+            onCheckIn={handleCheckIn}
+          />
+          <LoveLevelCard
+            isConnected={isConnected}
+            letterCount={loveStats.letterCount}
+            memoryCount={loveStats.memoryCount}
+          />
+          <JourneyPreview
+            isConnected={isConnected}
+            hasSharedSpace={hasSharedSpace}
+            partnerProfile={partnerProfile}
+            recentItems={recentItems}
+            inviteCode={couple?.invite_code}
+          />
+          <ActionCards />
+        </>
+      )}
     </main>
   );
 }
