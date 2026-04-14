@@ -67,7 +67,7 @@ begin
     raise exception 'Login required.';
   end if;
 
-  if jsonb_typeof(questions) <> 'array' or jsonb_array_length(questions) <> 20 then
+  if jsonb_typeof($1) <> 'array' or jsonb_array_length($1) <> 20 then
     raise exception 'Quiz must include exactly 20 questions.';
   end if;
 
@@ -108,7 +108,7 @@ begin
     and status = 'active';
 
   insert into public.quiz_rooms (couple_id, started_by, questions)
-  values (current_couple_id, auth.uid(), questions)
+  values (current_couple_id, auth.uid(), $1)
   returning id into next_room_id;
 
   return next_room_id;
@@ -138,7 +138,7 @@ begin
   select *
   into target_room
   from public.quiz_rooms
-  where id = room_id;
+  where id = $1;
 
   if target_room.id is null or not public.is_current_user_couple(target_room.couple_id) then
     raise exception 'Quiz room not found.';
@@ -159,11 +159,11 @@ begin
 
   question_count := jsonb_array_length(target_room.questions);
 
-  if question_index < 0 or question_index >= question_count then
+  if $2 < 0 or $2 >= question_count then
     raise exception 'Invalid question.';
   end if;
 
-  target_question := target_room.questions -> question_index;
+  target_question := target_room.questions -> $2;
   correct_answer := target_question ->> 'correctAnswer';
 
   insert into public.quiz_answers (
@@ -178,9 +178,9 @@ begin
     target_room.id,
     target_room.couple_id,
     auth.uid(),
-    question_index,
-    selected_answer,
-    selected_answer = correct_answer
+    $2,
+    $3,
+    $3 = correct_answer
   )
   on conflict (room_id, user_id, question_index) do nothing;
 
@@ -188,9 +188,9 @@ begin
     select count(distinct user_id)
     from public.quiz_answers
     where quiz_answers.room_id = target_room.id
-      and quiz_answers.question_index = question_index
+      and quiz_answers.question_index = $2
   ) >= 2
-  and question_index = question_count - 1 then
+  and $2 = question_count - 1 then
     update public.quiz_rooms
     set status = 'finished',
         finished_at = now(),

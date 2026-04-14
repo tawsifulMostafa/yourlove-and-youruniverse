@@ -22,6 +22,8 @@ alter table public.couple_checkins
 create unique index if not exists couple_checkins_one_per_day_key
 on public.couple_checkins (couple_id, user_id, checkin_date);
 
+grant select, insert, update, delete on public.couple_checkins to authenticated;
+
 alter table public.couple_checkins enable row level security;
 
 drop policy if exists "Couple members can read checkins" on public.couple_checkins;

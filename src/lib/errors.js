@@ -9,6 +9,14 @@ export function getFriendlyErrorMessage(error, fallback = "Something went wrong"
     return "This action is blocked by security rules. Refresh and try again.";
   }
 
+  if (message.includes("permission denied for table")) {
+    return "Database setup needs one more update. Run the latest Supabase SQL setup.";
+  }
+
+  if (message.includes("check constraint")) {
+    return "Database setup is out of date. Run the latest Supabase SQL setup.";
+  }
+
   if (message.includes("duplicate key")) {
     return "This already exists. Try again.";
   }
