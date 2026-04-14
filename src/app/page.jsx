@@ -175,6 +175,17 @@ export default function HomePage() {
     if (coupleError) {
       console.error("Couple load error:", coupleError.message);
       setCouple(null);
+    } else if (!coupleData) {
+      console.error("Couple load error: profile points to a missing couple.");
+      setCouple(null);
+      setHasSharedSpace(false);
+      setIsConnected(false);
+      setPartnerProfile(null);
+      setLoveStats({ letterCount: 0, memoryCount: 0 });
+      setRecentItems([]);
+      setCheckIns({ mine: null, partner: null });
+      setLoading(false);
+      return;
     } else {
       setCouple(coupleData);
     }
@@ -258,7 +269,10 @@ export default function HomePage() {
   };
 
   const handleCheckIn = async (mood) => {
-    if (!userProfile?.couple_id) return;
+    if (!userProfile?.couple_id || !couple?.id) {
+      toast.error("Reconnect with your partner first.");
+      return;
+    }
 
     if (isDisconnectPending(couple)) {
       toast.error("Your shared world is paused while disconnect is scheduled.");
