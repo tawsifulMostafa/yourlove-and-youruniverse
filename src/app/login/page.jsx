@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import Modal from "@/components/shared/Modal";
+import InstallAppButton from "@/components/shared/InstallAppButton";
 import { ensureUserProfile, isTrustedDevice, trustCurrentDevice } from "@/lib/auth";
 import toast from "react-hot-toast";
 
@@ -291,6 +292,8 @@ export default function LoginPage() {
             Create one
           </Link>
         </p>
+
+        <InstallAppButton compact />
       </div>
 
       <Modal isOpen={showForgotModal} onClose={closeForgotModal} maxWidth="max-w-md">

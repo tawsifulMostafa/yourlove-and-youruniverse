@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/shared/Navbar";
 import Modal from "@/components/shared/Modal";
 import PageSkeleton from "@/components/shared/PageSkeleton";
+import InstallAppButton from "@/components/shared/InstallAppButton";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -657,6 +658,8 @@ export default function ProfilePage() {
                                 Change Password
                             </button>
                         </div>
+
+                        <InstallAppButton />
 
                         <div className="mt-6 border-t border-[var(--border)] pt-5">
                             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">

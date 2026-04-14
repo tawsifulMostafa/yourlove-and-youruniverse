@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import ThemeInitializer from "@/components/shared/ThemeInitializer";
+import AppUpdatePrompt from "@/components/shared/AppUpdatePrompt";
 
 
 const geistSans = Geist({
@@ -50,6 +51,7 @@ export default function RootLayout({ children }) {
         <ThemeInitializer />
         <Toaster position="top-center" />
         {children}
+        <AppUpdatePrompt />
       </body>
     </html>
   );
