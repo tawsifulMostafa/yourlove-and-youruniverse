@@ -79,10 +79,12 @@ export default function PlayPage() {
     }
 
     setProfile(profileData);
-    setPartnerProfile(null);
-    setCouple(null);
-    setRoom(null);
-    setAnswers([]);
+    if (!quiet) {
+      setPartnerProfile(null);
+      setCouple(null);
+      setRoom(null);
+      setAnswers([]);
+    }
 
     if (!profileData.couple_id) {
       if (!quiet) setLoading(false);
@@ -106,6 +108,7 @@ export default function PlayPage() {
         .select("*")
         .eq("couple_id", profileData.couple_id)
         .not("room_code", "is", null)
+        .or(`participant_one_id.eq.${user.id},participant_two_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -124,6 +127,7 @@ export default function PlayPage() {
     }
 
     setRoom(roomData || null);
+    if (!roomData?.id) setAnswers([]);
 
     if (roomData?.id) {
       const { data: answersData, error: answersError } = await supabase
@@ -184,7 +188,6 @@ export default function PlayPage() {
   const partnerScore = getScore(answers, partnerProfile?.id);
   const myAnsweredCount = getAnsweredCount(answers, user?.id);
   const partnerAnsweredCount = getAnsweredCount(answers, partnerProfile?.id);
-  const isRoomCreator = room?.participant_one_id === user?.id;
   const isJoined = Boolean(room?.participant_two_id);
   const isRoomPlayer = user?.id === room?.participant_one_id || user?.id === room?.participant_two_id;
   const isFinished = room?.status === "finished";
@@ -237,27 +240,6 @@ export default function PlayPage() {
 
     const { error } = await supabase.rpc("join_brain_battle_room", {
       join_code: normalizedCode,
-    });
-
-    setBusy(false);
-
-    if (error) {
-      toast.error(getFriendlyErrorMessage(error));
-      return;
-    }
-
-    setJoinCode("");
-    toast.success("Joined Brain Battle");
-    await loadData();
-  };
-
-  const handleJoinVisibleRoom = async () => {
-    if (!room?.room_code) return;
-    setJoinCode(room.room_code);
-    setBusy(true);
-
-    const { error } = await supabase.rpc("join_brain_battle_room", {
-      join_code: room.room_code,
     });
 
     setBusy(false);
@@ -442,30 +424,17 @@ export default function PlayPage() {
                       <p className="text-sm leading-6 text-[var(--muted)]">
                         {isJoined
                           ? "Both players joined. Start when you are ready."
-                          : isRoomCreator
-                            ? "Share the code with your partner."
-                            : "Your partner created this room. Join to play."}
+                          : "Share the code with your partner."}
                       </p>
-                      {isRoomCreator || isRoomPlayer ? (
-                        <button
-                          type="button"
-                          onClick={handleStartRoom}
-                          disabled={!canStartRoom}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
-                        >
-                          <Play size={17} />
-                          Start 8 minute battle
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleJoinVisibleRoom}
-                          disabled={busy || disconnectPending}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
-                        >
-                          Join this room
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleStartRoom}
+                        disabled={!canStartRoom}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+                      >
+                        <Play size={17} />
+                        Start 8 minute battle
+                      </button>
                     </>
                   )}
                 </div>
