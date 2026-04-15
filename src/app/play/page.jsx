@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Brain, CheckCircle2, Gamepad2, Loader2, Trophy } from "lucide-react";
+import { Brain, CheckCircle2, ClipboardCopy, Gamepad2, Loader2, Play, Trophy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/shared/Navbar";
 import PageSkeleton from "@/components/shared/PageSkeleton";
@@ -12,20 +12,24 @@ import { getFriendlyErrorMessage } from "@/lib/errors";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
 
+function getScore(answers, userId) {
+  return answers.filter((answer) => answer.user_id === userId && answer.is_correct).length;
+}
+
+function getAnsweredCount(answers, userId) {
+  return answers.filter((answer) => answer.user_id === userId).length;
+}
+
 function getAnswerFor(answers, userId, questionIndex) {
   return answers.find((answer) => answer.user_id === userId && answer.question_index === questionIndex);
 }
 
-function getQuestionAnswerCount(answers, questionIndex) {
-  return new Set(
-    answers
-      .filter((answer) => answer.question_index === questionIndex)
-      .map((answer) => answer.user_id)
-  ).size;
-}
-
-function getScore(answers, userId) {
-  return answers.filter((answer) => answer.user_id === userId && answer.is_correct).length;
+function formatTimeLeft(endsAt) {
+  if (!endsAt) return "8:00";
+  const secondsLeft = Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 1000));
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 export default function PlayPage() {
@@ -36,9 +40,11 @@ export default function PlayPage() {
   const [couple, setCouple] = useState(null);
   const [room, setRoom] = useState(null);
   const [answers, setAnswers] = useState([]);
+  const [joinCode, setJoinCode] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [timeLeft, setTimeLeft] = useState("8:00");
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
-  const [answering, setAnswering] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const loadData = useCallback(async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
@@ -83,38 +89,32 @@ export default function PlayPage() {
       return;
     }
 
-    const { data: coupleData, error: coupleError } = await supabase
-      .from("couples")
-      .select("*")
-      .eq("id", profileData.couple_id)
-      .maybeSingle();
+    const [
+      { data: coupleData, error: coupleError },
+      { data: partnerData, error: partnerError },
+      { data: roomData, error: roomError },
+    ] = await Promise.all([
+      supabase.from("couples").select("*").eq("id", profileData.couple_id).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("id, name, email")
+        .eq("couple_id", profileData.couple_id)
+        .neq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("quiz_rooms")
+        .select("*")
+        .eq("couple_id", profileData.couple_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
-    if (coupleError) {
-      console.error("Quiz couple load error:", coupleError.message);
-    } else {
-      setCouple(coupleData);
-    }
+    if (coupleError) console.error("Brain battle couple load error:", coupleError.message);
+    else setCouple(coupleData);
 
-    const { data: partnerData, error: partnerError } = await supabase
-      .from("profiles")
-      .select("id, name, email")
-      .eq("couple_id", profileData.couple_id)
-      .neq("id", user.id)
-      .maybeSingle();
-
-    if (partnerError) {
-      console.error("Quiz partner load error:", partnerError.message);
-    } else {
-      setPartnerProfile(partnerData || null);
-    }
-
-    const { data: roomData, error: roomError } = await supabase
-      .from("quiz_rooms")
-      .select("*")
-      .eq("couple_id", profileData.couple_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    if (partnerError) console.error("Brain battle partner load error:", partnerError.message);
+    else setPartnerProfile(partnerData || null);
 
     if (roomError) {
       toast.error(getFriendlyErrorMessage(roomError));
@@ -131,11 +131,8 @@ export default function PlayPage() {
         .eq("room_id", roomData.id)
         .order("question_index", { ascending: true });
 
-      if (answersError) {
-        toast.error(getFriendlyErrorMessage(answersError));
-      } else {
-        setAnswers(answersData || []);
-      }
+      if (answersError) toast.error(getFriendlyErrorMessage(answersError));
+      else setAnswers(answersData || []);
     }
 
     if (!quiet) setLoading(false);
@@ -147,7 +144,7 @@ export default function PlayPage() {
   }, [loadData]);
 
   useEffect(() => {
-    if (!room?.id || room.status !== "active") return;
+    if (!room?.id || !["waiting", "active"].includes(room.status)) return;
 
     const intervalId = window.setInterval(() => {
       loadData({ quiet: true });
@@ -156,68 +153,157 @@ export default function PlayPage() {
     return () => window.clearInterval(intervalId);
   }, [loadData, room?.id, room?.status]);
 
-  const questions = Array.isArray(room?.questions) ? room.questions : [];
+  useEffect(() => {
+    if (room?.status !== "active" || !room.ends_at) return;
+
+    const tick = async () => {
+      const nextTimeLeft = formatTimeLeft(room.ends_at);
+      setTimeLeft(nextTimeLeft);
+
+      if (nextTimeLeft === "0:00") {
+        await supabase.rpc("finish_brain_battle", { target_room_id: room.id });
+        await loadData({ quiet: true });
+      }
+    };
+
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [loadData, room?.ends_at, room?.id, room?.status]);
+
+  const questions = useMemo(
+    () => (Array.isArray(room?.questions) ? room.questions : []),
+    [room]
+  );
   const disconnectPending = isDisconnectPending(couple);
   const hasPartner = Boolean(partnerProfile);
   const partnerName = partnerProfile?.name || "Your partner";
   const myScore = getScore(answers, user?.id);
   const partnerScore = getScore(answers, partnerProfile?.id);
-  const currentIndex = questions.findIndex((_, index) => getQuestionAnswerCount(answers, index) < 2);
-  const isFinished = Boolean(room && (room.status === "finished" || (questions.length > 0 && currentIndex === -1)));
-  const activeIndex = currentIndex === -1 ? Math.max(questions.length - 1, 0) : currentIndex;
+  const myAnsweredCount = getAnsweredCount(answers, user?.id);
+  const partnerAnsweredCount = getAnsweredCount(answers, partnerProfile?.id);
+  const isRoomCreator = room?.participant_one_id === user?.id;
+  const isJoined = Boolean(room?.participant_two_id);
+  const isRoomPlayer = user?.id === room?.participant_one_id || user?.id === room?.participant_two_id;
+  const isFinished = room?.status === "finished";
   const currentQuestion = questions[activeIndex];
   const myCurrentAnswer = getAnswerFor(answers, user?.id, activeIndex);
-  const partnerCurrentAnswer = getAnswerFor(answers, partnerProfile?.id, activeIndex);
-  const canStartQuiz = Boolean(profile?.couple_id && hasPartner && !disconnectPending && !starting);
-  const canAnswer = Boolean(room?.status === "active" && currentQuestion && !myCurrentAnswer && !answering && !disconnectPending);
+  const canCreateRoom = Boolean(profile?.couple_id && hasPartner && !disconnectPending && !busy);
+  const canStartRoom = Boolean(room?.status === "waiting" && isJoined && isRoomPlayer && !disconnectPending && !busy);
+  const canAnswer = Boolean(room?.status === "active" && currentQuestion && !myCurrentAnswer && !busy && !disconnectPending);
 
-  const handleStartQuiz = async () => {
-    if (!profile?.couple_id) {
-      toast.error("Connect with your partner first");
-      router.push("/connect");
-      return;
-    }
+  const nextUnansweredIndex = useMemo(() => {
+    const index = questions.findIndex((_, questionIndex) => !getAnswerFor(answers, user?.id, questionIndex));
+    return index === -1 ? Math.max(questions.length - 1, 0) : index;
+  }, [answers, questions, user?.id]);
 
-    if (!hasPartner) {
-      toast.error("Your partner has not joined yet");
-      return;
-    }
-
-    if (disconnectPending) {
-      toast.error("Your shared world is paused while disconnect is scheduled.");
-      return;
-    }
-
-    setStarting(true);
+  const handleCreateRoom = async () => {
+    if (!canCreateRoom) return;
+    setBusy(true);
 
     const response = await fetch("/api/quiz/questions");
     const payload = await response.json();
 
     if (!response.ok || !payload.questions) {
-      setStarting(false);
-      toast.error(payload.error || "Quiz questions are not available right now.");
+      setBusy(false);
+      toast.error(payload.error || "Brain questions are not available right now.");
       return;
     }
 
-    const { error } = await supabase.rpc("start_quiz_battle", {
+    const { data, error } = await supabase.rpc("create_brain_battle_room", {
       questions: payload.questions,
     });
 
-    setStarting(false);
+    setBusy(false);
 
     if (error) {
       toast.error(getFriendlyErrorMessage(error));
       return;
     }
 
-    toast.success("Quiz battle started");
+    const roomInfo = Array.isArray(data) ? data[0] : data;
+    toast.success(`Room created: ${roomInfo?.room_code || "ready"}`);
     await loadData();
+  };
+
+  const handleJoinRoom = async (event) => {
+    event.preventDefault();
+    const normalizedCode = joinCode.trim().toUpperCase();
+    if (!normalizedCode) return;
+
+    setBusy(true);
+
+    const { error } = await supabase.rpc("join_brain_battle_room", {
+      join_code: normalizedCode,
+    });
+
+    setBusy(false);
+
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error));
+      return;
+    }
+
+    setJoinCode("");
+    toast.success("Joined Brain Battle");
+    await loadData();
+  };
+
+  const handleJoinVisibleRoom = async () => {
+    if (!room?.room_code) return;
+    setJoinCode(room.room_code);
+    setBusy(true);
+
+    const { error } = await supabase.rpc("join_brain_battle_room", {
+      join_code: room.room_code,
+    });
+
+    setBusy(false);
+
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error));
+      return;
+    }
+
+    setJoinCode("");
+    toast.success("Joined Brain Battle");
+    await loadData();
+  };
+
+  const handleStartRoom = async () => {
+    if (!canStartRoom) return;
+    setBusy(true);
+
+    const { error } = await supabase.rpc("start_brain_battle", {
+      target_room_id: room.id,
+    });
+
+    setBusy(false);
+
+    if (error) {
+      toast.error(getFriendlyErrorMessage(error));
+      return;
+    }
+
+    toast.success("Brain Battle started");
+    await loadData();
+  };
+
+  const handleCopyCode = async () => {
+    if (!room?.room_code) return;
+
+    try {
+      await navigator.clipboard.writeText(room.room_code);
+      toast.success("Room code copied");
+    } catch {
+      toast.error("Could not copy room code");
+    }
   };
 
   const handleAnswer = async (answer) => {
     if (!canAnswer) return;
-
-    setAnswering(true);
+    setBusy(true);
 
     const { error } = await supabase.rpc("answer_quiz_question", {
       room_id: room.id,
@@ -225,26 +311,25 @@ export default function PlayPage() {
       selected_answer: answer,
     });
 
-    setAnswering(false);
+    setBusy(false);
 
     if (error) {
       toast.error(getFriendlyErrorMessage(error));
+      await loadData({ quiet: true });
       return;
     }
 
     await loadData({ quiet: true });
   };
 
-  let resultCopy = "Start a quiz and see who wins.";
+  let resultCopy = "Create a room, share the code, then start together.";
   if (isFinished) {
     if (myScore > partnerScore) resultCopy = "You won. A dare would be fair now.";
     else if (myScore < partnerScore) resultCopy = `${partnerName} won this round.`;
     else resultCopy = "Same brain energy. It is a draw.";
   }
 
-  if (loading) {
-    return <PageSkeleton variant="cards" />;
-  }
+  if (loading) return <PageSkeleton variant="cards" />;
 
   return (
     <div className="min-h-screen bg-[var(--app-bg-soft)]">
@@ -259,21 +344,20 @@ export default function PlayPage() {
             <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h1 className="text-4xl font-semibold tracking-tight">
-                  Quiz Battle
+                  Brain Battle
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85">
-                  20 random questions. Both answer the same question. Correct answers add one point.
+                  One room code. 20 tricky questions. 8 minutes.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleStartQuiz}
-                disabled={!canStartQuiz}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[var(--accent)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {starting ? <Loader2 className="animate-spin" size={18} /> : <Gamepad2 size={18} />}
-                {starting ? "Starting..." : "Start new battle"}
-              </button>
+              {room?.status === "active" && (
+                <div className="rounded-2xl bg-white/18 px-5 py-3 text-center backdrop-blur">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+                    Time left
+                  </p>
+                  <p className="text-2xl font-semibold">{timeLeft}</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -285,47 +369,108 @@ export default function PlayPage() {
         )}
 
         {!profile?.couple_id && (
-          <div className="mt-6 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-            <h2 className="text-xl font-semibold text-[var(--text)]">Connect first</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Quiz Battle needs a shared partner space.
-            </p>
-            <Link
-              href="/connect"
-              className="mt-4 inline-flex rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90"
-            >
+          <InfoCard title="Connect first" copy="Brain Battle needs a shared partner space.">
+            <Link href="/connect" className="mt-4 inline-flex rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90">
               Go to connect
             </Link>
-          </div>
+          </InfoCard>
         )}
 
         {profile?.couple_id && !hasPartner && (
-          <div className="mt-6 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-            <h2 className="text-xl font-semibold text-[var(--text)]">Waiting for your partner</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-              Share your invite first. Quiz Battle unlocks when your partner joins.
-            </p>
-          </div>
+          <InfoCard title="Waiting for your partner" copy="Share your invite first. Brain Battle unlocks when your partner joins." />
         )}
 
         {profile?.couple_id && hasPartner && (
-          <section className="mt-6 grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
+          <section className="mt-6 grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
             <aside className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                Scoreboard
+                Room
               </p>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-[var(--surface-soft)] p-4">
-                  <p className="text-sm font-semibold text-[var(--text)]">You</p>
-                  <p className="mt-2 text-4xl font-semibold text-[var(--accent)]">{myScore}</p>
-                </div>
-                <div className="rounded-2xl bg-[var(--surface-soft)] p-4">
-                  <p className="truncate text-sm font-semibold text-[var(--text)]">{partnerName}</p>
-                  <p className="mt-2 text-4xl font-semibold text-[var(--accent)]">{partnerScore}</p>
-                </div>
-              </div>
 
-              <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+              {!room || isFinished ? (
+                <div className="mt-5 space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleCreateRoom}
+                    disabled={!canCreateRoom}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+                  >
+                    {busy ? <Loader2 className="animate-spin" size={18} /> : <Gamepad2 size={18} />}
+                    Create room
+                  </button>
+
+                  <form onSubmit={handleJoinRoom} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                    <label className="text-sm font-semibold text-[var(--text)]" htmlFor="brain-room-code">
+                      Join with code
+                    </label>
+                    <input
+                      id="brain-room-code"
+                      value={joinCode}
+                      onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                      placeholder="ABC123"
+                      maxLength={6}
+                      className="mt-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 font-mono text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy || !joinCode.trim()}
+                      className="mt-3 w-full rounded-xl border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--surface-accent)] disabled:opacity-60"
+                    >
+                      Join room
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="mt-5 space-y-4">
+                  <div className="rounded-2xl bg-[var(--surface-soft)] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+                      Room code
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      className="mt-2 inline-flex w-full items-center justify-between rounded-xl bg-[var(--surface)] px-4 py-3 font-mono text-xl font-semibold text-[var(--text)]"
+                    >
+                      {room.room_code}
+                      <ClipboardCopy size={18} className="text-[var(--accent)]" />
+                    </button>
+                  </div>
+
+                  {room.status === "waiting" && (
+                    <>
+                      <p className="text-sm leading-6 text-[var(--muted)]">
+                        {isJoined
+                          ? "Both players joined. Start when you are ready."
+                          : isRoomCreator
+                            ? "Share the code with your partner."
+                            : "Your partner created this room. Join to play."}
+                      </p>
+                      {isRoomCreator || isRoomPlayer ? (
+                        <button
+                          type="button"
+                          onClick={handleStartRoom}
+                          disabled={!canStartRoom}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+                        >
+                          <Play size={17} />
+                          Start 8 minute battle
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleJoinVisibleRoom}
+                          disabled={busy || disconnectPending}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90 disabled:opacity-60"
+                        >
+                          Join this room
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
                 <div className="flex items-start gap-3">
                   <Trophy className="mt-1 text-[var(--accent)]" size={22} />
                   <div>
@@ -334,10 +479,7 @@ export default function PlayPage() {
                   </div>
                 </div>
                 {isFinished && myScore > partnerScore && (
-                  <Link
-                    href="/dares"
-                    className="mt-4 inline-flex w-full justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90"
-                  >
+                  <Link href="/dares" className="mt-4 inline-flex w-full justify-center rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90">
                     Send a dare
                   </Link>
                 )}
@@ -345,14 +487,19 @@ export default function PlayPage() {
             </aside>
 
             <section className="rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
-              {!room ? (
+              <div className="grid grid-cols-2 gap-3">
+                <ScoreTile label="You" score={myScore} answered={myAnsweredCount} />
+                <ScoreTile label={partnerName} score={partnerScore} answered={partnerAnsweredCount} />
+              </div>
+
+              {!room || room.status === "waiting" ? (
                 <div className="flex min-h-80 flex-col items-center justify-center text-center">
                   <Brain className="text-[var(--accent)]" size={42} />
                   <h2 className="mt-4 text-2xl font-semibold text-[var(--text)]">
-                    No quiz yet
+                    {room?.status === "waiting" ? "Room is waiting" : "No room yet"}
                   </h2>
                   <p className="mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-                    Start a new battle. Your partner will see the same questions when they open this page.
+                    Create a room, let your partner join with the code, then start together.
                   </p>
                 </div>
               ) : isFinished ? (
@@ -364,7 +511,7 @@ export default function PlayPage() {
                   <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{resultCopy}</p>
                 </div>
               ) : currentQuestion ? (
-                <div>
+                <div className="mt-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="rounded-full bg-[var(--surface-accent)] px-4 py-2 text-sm font-semibold text-[var(--accent)]">
                       Question {activeIndex + 1} of {questions.length}
@@ -381,8 +528,8 @@ export default function PlayPage() {
                   <div className="mt-6 grid gap-3">
                     {currentQuestion.answers.map((answer) => {
                       const isMyChoice = myCurrentAnswer?.selected_answer === answer;
-                      const revealAnswer = Boolean(myCurrentAnswer);
                       const isCorrect = currentQuestion.correctAnswer === answer;
+                      const revealAnswer = Boolean(myCurrentAnswer);
 
                       return (
                         <button
@@ -403,10 +550,14 @@ export default function PlayPage() {
                     })}
                   </div>
 
-                  {myCurrentAnswer && !partnerCurrentAnswer && (
-                    <p className="mt-5 rounded-2xl bg-[var(--surface-soft)] p-4 text-center text-sm font-medium text-[var(--muted)]">
-                      Your answer is locked. Waiting for {partnerName}.
-                    </p>
+                  {myCurrentAnswer && myAnsweredCount < questions.length && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveIndex(nextUnansweredIndex)}
+                      className="mt-5 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent-contrast)] transition hover:opacity-90"
+                    >
+                      Next unanswered
+                    </button>
                   )}
                 </div>
               ) : null}
@@ -414,6 +565,26 @@ export default function PlayPage() {
           </section>
         )}
       </main>
+    </div>
+  );
+}
+
+function InfoCard({ title, copy, children }) {
+  return (
+    <div className="mt-6 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)]">
+      <h2 className="text-xl font-semibold text-[var(--text)]">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy}</p>
+      {children}
+    </div>
+  );
+}
+
+function ScoreTile({ label, score, answered }) {
+  return (
+    <div className="rounded-2xl bg-[var(--surface-soft)] p-4">
+      <p className="truncate text-sm font-semibold text-[var(--text)]">{label}</p>
+      <p className="mt-2 text-4xl font-semibold text-[var(--accent)]">{score}</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{answered}/20 answered</p>
     </div>
   );
 }
