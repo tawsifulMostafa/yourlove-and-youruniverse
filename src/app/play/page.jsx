@@ -105,6 +105,7 @@ export default function PlayPage() {
         .from("quiz_rooms")
         .select("*")
         .eq("couple_id", profileData.couple_id)
+        .not("room_code", "is", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),

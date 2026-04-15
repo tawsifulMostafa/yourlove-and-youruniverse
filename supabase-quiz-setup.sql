@@ -31,6 +31,13 @@ alter table public.quiz_rooms
   add column if not exists started_at timestamptz,
   add column if not exists ends_at timestamptz;
 
+update public.quiz_rooms
+set status = 'finished',
+    finished_at = coalesce(finished_at, now()),
+    updated_at = now()
+where room_code is null
+  and status in ('waiting', 'active');
+
 create table if not exists public.quiz_answers (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references public.quiz_rooms(id) on delete cascade,
