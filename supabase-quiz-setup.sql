@@ -82,7 +82,7 @@ to authenticated
 using (public.is_current_user_couple(couple_id));
 
 create or replace function public.create_brain_battle_room(questions jsonb)
-returns table(room_id uuid, room_code text)
+returns table(created_room_id uuid, created_room_code text)
 language plpgsql
 security definer
 set search_path = public
@@ -272,9 +272,9 @@ end;
 $$;
 
 create or replace function public.answer_quiz_question(
-  room_id uuid,
-  question_index int,
-  selected_answer text
+  target_room_id uuid,
+  target_question_index int,
+  target_selected_answer text
 )
 returns void
 language plpgsql
@@ -293,7 +293,7 @@ begin
 
   select * into target_room
   from public.quiz_rooms
-  where id = $1;
+  where id = target_room_id;
 
   if target_room.id is null or not public.is_current_user_couple(target_room.couple_id) then
     raise exception 'Room not found.';
@@ -326,11 +326,11 @@ begin
 
   question_count := jsonb_array_length(target_room.questions);
 
-  if $2 < 0 or $2 >= question_count then
+  if target_question_index < 0 or target_question_index >= question_count then
     raise exception 'Invalid question.';
   end if;
 
-  target_question := target_room.questions -> $2;
+  target_question := target_room.questions -> target_question_index;
   correct_answer := target_question ->> 'correctAnswer';
 
   insert into public.quiz_answers (
@@ -345,9 +345,9 @@ begin
     target_room.id,
     target_room.couple_id,
     auth.uid(),
-    $2,
-    $3,
-    $3 = correct_answer
+    target_question_index,
+    target_selected_answer,
+    target_selected_answer = correct_answer
   )
   on conflict (room_id, user_id, question_index) do nothing;
 

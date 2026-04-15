@@ -227,7 +227,7 @@ export default function PlayPage() {
     }
 
     const roomInfo = Array.isArray(data) ? data[0] : data;
-    toast.success(`Room created: ${roomInfo?.room_code || "ready"}`);
+    toast.success(`Room created: ${roomInfo?.created_room_code || roomInfo?.room_code || "ready"}`);
     await loadData();
   };
 
@@ -289,9 +289,9 @@ export default function PlayPage() {
     setBusy(true);
 
     const { error } = await supabase.rpc("answer_quiz_question", {
-      room_id: room.id,
-      question_index: activeIndex,
-      selected_answer: answer,
+      target_room_id: room.id,
+      target_question_index: activeIndex,
+      target_selected_answer: answer,
     });
 
     setBusy(false);
